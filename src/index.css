@@ -271,6 +271,16 @@ textarea.field {
   text-transform: var(--s-head-case);
   line-height: 1;
 }
+@media (max-width: 1023px) {
+  .site-nav.in-editor {
+    opacity: 0;
+    translate: 0 -100%;
+  }
+  .site-nav.in-editor * {
+    pointer-events: none !important;
+  }
+}
+
 /* Blocks can be picked on the page, like in a block editor */
 .block.pickable {
   cursor: pointer;

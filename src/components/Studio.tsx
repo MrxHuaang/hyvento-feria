@@ -522,6 +522,9 @@ export function Studio({ state, setState }: Props) {
   useGSAP(
     () => {
       ScrollTrigger.create({ trigger: root.current, start: 'top 55%', once: true, onEnter: () => setBuildKey((k) => Math.max(1, k)) })
+      // On phones the editor takes the whole screen, so the site nav steps aside while it is there
+      const nav = document.querySelector('.site-nav')
+      if (nav) ScrollTrigger.create({ trigger: root.current, start: 'top 12%', end: 'bottom 50%', toggleClass: { targets: nav, className: 'in-editor' } })
       const unsnapOnly = snapWhenNear(root.current!)
       const unhold = holdPage(root.current!)
       const unsnap = () => {
@@ -576,10 +579,10 @@ export function Studio({ state, setState }: Props) {
   const showCel = device !== 'pc'
 
   return (
-    <section ref={root} id="estudio" className="relative border-t border-line lg:grid lg:h-[100dvh] lg:min-h-[640px] lg:grid-cols-[minmax(380px,440px)_1fr]">
+    <section ref={root} id="estudio" className="relative flex h-[100dvh] flex-col overflow-hidden border-t border-line lg:grid lg:min-h-[640px] lg:grid-cols-[minmax(380px,440px)_1fr]">
       {/* ------------------------------------------------ Stage */}
-      <div className="stage sticky top-0 z-10 flex h-[50dvh] flex-col bg-coal-2 pt-[68px] lg:static lg:order-2 lg:h-auto lg:min-h-0">
-        <div className="flex items-center justify-between gap-4 px-5 pb-3 lg:px-8 lg:pt-2">
+      <div className="stage relative z-10 flex h-[46dvh] shrink-0 flex-col bg-coal-2 pt-3 lg:order-2 lg:h-auto lg:min-h-0 lg:pt-[68px]">
+        <div className="flex items-center justify-between gap-4 px-4 pb-2.5 lg:px-8 lg:pt-2 lg:pb-3">
           <p key={log} className="label flex min-w-0 items-center gap-2.5 text-mute [animation:rise_0.5s_var(--ease-out-expo)]">
             <span className="h-1.5 w-1.5 shrink-0 bg-bone [animation:blink_1.2s_ease-in-out_infinite]" />
             <span className="truncate">{log}</span>
@@ -618,7 +621,7 @@ export function Studio({ state, setState }: Props) {
           </div>
         </div>
 
-        <div className="relative min-h-0 flex-1 px-5 pb-5 [perspective:1400px] lg:px-8 lg:pb-8">
+        <div className="relative min-h-0 flex-1 px-4 pb-3 [perspective:1400px] lg:px-8 lg:pb-8">
           <div className="tilt relative h-full [transform-style:preserve-3d]">
             <div className="builder pointer-events-none absolute inset-0 z-20 hidden lg:block [transform:translateZ(90px)]" aria-hidden="true">
               <div className="bld-piece invisible absolute top-0 left-0 grid place-items-center border-2 border-dashed border-[#2f7bff] bg-[#2f7bff]/12 opacity-0">
@@ -675,16 +678,16 @@ export function Studio({ state, setState }: Props) {
       </div>
 
       {/* ------------------------------------------------ Controls */}
-      <div className="relative flex flex-col border-line bg-coal lg:order-1 lg:min-h-0 lg:border-r lg:pt-[68px]">
-        <div className="ctl-in flex items-end justify-between gap-4 px-5 pt-7 lg:px-8 lg:pt-3">
-          <h2 className="display-narrow text-[clamp(2.6rem,4vw,3.6rem)]">Ármala tú</h2>
-          <button type="button" onClick={surprise} className="btn !gap-2 !px-3.5 !py-2.5">
+      <div className="relative flex min-h-0 flex-1 flex-col border-t border-line bg-coal lg:order-1 lg:border-t-0 lg:border-r lg:pt-[68px]">
+        <div className="ctl-in flex items-center justify-between gap-4 px-4 pt-3.5 lg:items-end lg:px-8 lg:pt-3">
+          <h2 className="display-narrow text-[1.9rem] whitespace-nowrap lg:text-[clamp(2.6rem,4vw,3.6rem)]">Ármala tú</h2>
+          <button type="button" onClick={surprise} className="btn !gap-2 !px-3 !py-2 lg:!px-3.5 lg:!py-2.5">
             <Shuffle key={buildKey} size={15} weight="bold" className="[animation:pop_0.6s_var(--ease-out-expo)]" />
             Sorpréndeme
           </button>
         </div>
 
-        <div className="ctl-in mt-5 flex border-b border-line px-5 lg:px-8" role="tablist">
+        <div className="ctl-in mt-3 flex border-b border-line px-4 lg:mt-5 lg:px-8" role="tablist">
           {TABS.map(([id, label]) => (
             <button
               key={id}
@@ -692,7 +695,7 @@ export function Studio({ state, setState }: Props) {
               role="tab"
               aria-selected={tab === id}
               onClick={() => setTab(id)}
-              className={`relative mr-7 pb-3 text-[14px] font-medium transition-colors ${tab === id ? 'text-bone' : 'text-mute hover:text-bone'}`}
+              className={`relative mr-6 pb-2.5 text-[14px] font-medium transition-colors lg:mr-7 lg:pb-3 ${tab === id ? 'text-bone' : 'text-mute hover:text-bone'}`}
             >
               {label}
               <span className={`absolute inset-x-0 -bottom-px h-[3px] origin-left bg-bone transition-transform duration-500 ease-[var(--ease-out-expo)] ${tab === id ? 'scale-x-100' : 'scale-x-0'}`} />
@@ -701,7 +704,7 @@ export function Studio({ state, setState }: Props) {
         </div>
 
         <div data-lenis-prevent className="ctl-in no-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          <div key={tab} className="flex flex-col gap-8 px-5 pt-6 pb-8 [animation:rise_0.5s_var(--ease-out-expo)] lg:px-8">
+          <div key={tab} className="flex flex-col gap-7 px-4 pt-5 pb-8 [animation:rise_0.5s_var(--ease-out-expo)] lg:gap-8 lg:px-8 lg:pt-6">
             {tab === 'marca' && (
               <>
                 <div>
@@ -1128,7 +1131,7 @@ export function Studio({ state, setState }: Props) {
                   </div>
 
                   <div>
-                    <span className={ctlTitle}>Tu página, de arriba abajo. Arrastra para mover, toca para ajustar.</span>
+                    <span className={ctlTitle}>Tu página, de arriba abajo. Arrastra desde los puntos para mover, toca para ajustar.</span>
                     <ul className="flex flex-col gap-1.5">
                       {state.blocks
                         .filter((x) => !x.closing)
@@ -1136,15 +1139,20 @@ export function Studio({ state, setState }: Props) {
                           <li
                             key={bl.uid}
                             data-id={bl.uid}
-                            onPointerDown={(e) => onDragStart(e, bl.uid)}
-                            onPointerMove={onDragMove}
-                            onPointerUp={onDragEnd}
-                            onPointerCancel={onDragEnd}
-                            className={`sort-row group flex cursor-grab touch-none items-center gap-2 border py-1.5 pr-1.5 pl-2.5 text-[14px] select-none active:cursor-grabbing ${
+                            className={`sort-row group flex items-center gap-1 border py-1 pr-1.5 pl-1 text-[14px] select-none ${
                               dragging === bl.uid ? 'z-[1] border-bone bg-bone text-coal shadow-[0_14px_30px_rgb(0_0_0/0.5)]' : 'border-line bg-coal-2'
                             } ${bl.hidden ? 'opacity-45' : ''}`}
                           >
-                            <DotsSixVertical size={17} weight="bold" className="shrink-0 opacity-50" />
+                            <span
+                              aria-label="Arrastrar para mover"
+                              onPointerDown={(e) => onDragStart(e, bl.uid)}
+                              onPointerMove={onDragMove}
+                              onPointerUp={onDragEnd}
+                              onPointerCancel={onDragEnd}
+                              className="grid h-9 w-9 shrink-0 cursor-grab touch-none place-items-center opacity-60 active:cursor-grabbing"
+                            >
+                              <DotsSixVertical size={18} weight="bold" />
+                            </span>
                             <button type="button" onClick={() => pickBlock(bl.uid)} className="min-w-0 flex-1 truncate py-1 text-left">
                               {labelOf(bl)}
                               {bl.type === 'tpl' && <span className="ml-2 text-[10px] tracking-[0.14em] uppercase opacity-50">plantilla</span>}
@@ -1191,12 +1199,12 @@ export function Studio({ state, setState }: Props) {
         </div>
 
         {/* Running total */}
-        <div className="sticky bottom-0 flex items-end justify-between gap-4 border-t border-line bg-coal px-5 py-4 lg:static lg:px-8">
+        <div className="flex shrink-0 items-end justify-between gap-4 border-t border-line bg-coal px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:px-8 lg:py-4">
           <div>
             <span className="block text-[12px] text-mute">Va en</span>
-            <Money value={q.total} className="deco text-[2rem] leading-none" />
+            <Money value={q.total} className="deco text-[1.6rem] leading-none lg:text-[2rem]" />
           </div>
-          <button type="button" className="btn btn-solid !px-4 !py-3" onClick={() => setTicket(true)}>
+          <button type="button" className="btn btn-solid !px-3.5 !py-2.5 lg:!px-4 lg:!py-3" onClick={() => setTicket(true)}>
             Ver cotización
             <ArrowRight size={15} weight="bold" />
           </button>

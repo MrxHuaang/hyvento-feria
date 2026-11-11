@@ -161,7 +161,7 @@ export function MiniSite({ state, buildKey, focus, onStep, selected, onSelect, o
       })
       tl.call(() => onStep?.(''), [], '+=1.2')
       tl
-        .fromTo('.block-ghost', { opacity: 0 }, { opacity: 0.45, duration: 0.3, stagger: 0.08 })
+        .fromTo('.block-ghost', { opacity: 0 }, { opacity: 0.45, duration: 0.3, stagger: 0.08 }, 0)
         .fromTo(
           bodies,
           { clipPath: 'inset(0 0 100% 0)' },
@@ -169,7 +169,7 @@ export function MiniSite({ state, buildKey, focus, onStep, selected, onSelect, o
           0.3,
         )
         .to('.block-ghost', { opacity: 0, duration: 0.4, stagger: 0.13 }, 0.85)
-        .fromTo('.float', { scale: 0 }, { scale: 1, duration: 0.7, ease: 'back.out(2)', stagger: 0.12, clearProps: 'scale' }, '-=0.5')
+        .fromTo('.float', { scale: 0 }, { scale: 1, duration: 0.7, ease: 'back.out(2)', stagger: 0.12, clearProps: 'scale' }, 1.3)
     },
     { scope: root, dependencies: [buildKey, state.business], revertOnUpdate: true },
   )

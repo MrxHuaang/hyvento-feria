@@ -9,7 +9,7 @@ import { goTo, leaveEditor, reducedMotion } from '../lib/scroll'
 
 export function Nav() {
   return (
-    <header className="pointer-events-none fixed inset-x-0 top-0 z-50 flex h-[76px] items-center justify-between px-5 lg:px-9">
+    <header className="site-nav pointer-events-none fixed inset-x-0 top-0 z-50 flex h-[76px] items-center justify-between px-5 transition-[opacity,translate] duration-500 lg:px-9">
       <a href="#top" onClick={(e) => (e.preventDefault(), leaveEditor('#top'))} className="group pointer-events-auto flex items-center gap-3" aria-label="Hyvento, inicio">
         <Seal className="h-12 w-12 text-bone transition-transform duration-700 ease-[var(--ease-out-expo)] group-hover:rotate-[60deg]" />
         <span className="deco hidden text-[1.55rem] text-bone sm:block [-webkit-text-stroke:5px_var(--color-coal)] [paint-order:stroke_fill]">Hyvento</span>
