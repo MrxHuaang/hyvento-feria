@@ -1,0 +1,379 @@
+@import 'tailwindcss';
+
+/* Tokens. One dark theme for the whole page; the accent (--brand) is the
+   colour the visitor picks in the studio, so the page takes on their brand. */
+@theme {
+  --color-coal: #16110b;
+  --color-coal-2: #1e1810;
+  --color-coal-3: #322818;
+  --color-bone: #f4ebd9;
+  --color-mute: #b9ab92;
+  --color-line: rgb(244 235 217 / 0.2);
+  --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
+  --font-display: 'Archivo Variable', 'Arial Black', sans-serif;
+  --font-deco: 'Cinzel Decorative', 'Playfair Display Variable', Georgia, serif;
+  --font-sans: 'Host Grotesk Variable', 'Helvetica Neue', Arial, sans-serif;
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+:root {
+  --brand: #f4ebd9;
+  --on-brand: #16110b;
+  /* z-index scale: content 1-10, nav 50, grain 60, loader 80 */
+}
+
+@property --brand {
+  syntax: '<color>';
+  inherits: true;
+  initial-value: #f4ebd9;
+}
+
+html {
+  background: var(--color-coal);
+  color: var(--color-bone);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  transition: --brand 0.6s var(--ease-out-expo);
+}
+
+html.has-lenis {
+  scrollbar-width: none;
+}
+html.has-lenis::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  margin: 0;
+  overflow-x: clip;
+}
+
+button:not(:disabled),
+[role='button'],
+[role='tab'],
+[role='switch'],
+label.chip,
+summary {
+  cursor: pointer;
+}
+
+::selection {
+  background: var(--brand);
+  color: var(--on-brand);
+}
+
+:focus-visible {
+  outline: 2px solid var(--brand);
+  outline-offset: 3px;
+}
+
+.display {
+  font-family: var(--font-display);
+  font-stretch: 125%;
+  font-weight: 800;
+  text-transform: uppercase;
+  line-height: 0.92;
+  letter-spacing: -0.025em;
+}
+
+.display-narrow {
+  font-family: var(--font-display);
+  font-stretch: 68%;
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+}
+
+.deco {
+  font-family: var(--font-deco);
+  font-weight: 900;
+  text-transform: uppercase;
+  line-height: 0.95;
+  letter-spacing: -0.005em;
+}
+
+.label {
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-weight: 500;
+}
+
+/* Masked line reveal: parent clips, child slides up */
+.line-mask {
+  display: block;
+  overflow: hidden;
+  padding-bottom: 0.06em;
+}
+.line-mask > span {
+  display: block;
+  will-change: transform;
+}
+
+/* Film grain, fixed so it never repaints while scrolling */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
+  opacity: 0.11;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Buttons: sharp-cornered frame like an engraved plate. One radius system: 0 on
+   page chrome, the mini-site inside the studio owns its own radii. */
+.btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.95rem 1.4rem;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  border: 1px solid var(--color-bone);
+  color: var(--color-bone);
+  overflow: hidden;
+  isolation: isolate;
+  transition: color 0.45s var(--ease-out-expo), transform 0.2s;
+}
+.btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background: var(--color-bone);
+  transform: translateY(101%);
+  transition: transform 0.45s var(--ease-out-expo);
+}
+.btn:hover {
+  color: var(--color-coal);
+}
+.btn:hover::before {
+  transform: translateY(0);
+}
+.btn:active {
+  transform: scale(0.98);
+}
+.btn-solid {
+  background: var(--brand);
+  border-color: var(--brand);
+  color: var(--on-brand);
+  transition: color 0.45s var(--ease-out-expo), transform 0.2s, background-color 0.6s, border-color 0.6s;
+}
+
+/* Studio controls */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  border: 1px solid var(--color-line);
+  font-size: 13px;
+  color: var(--color-mute);
+  transition: border-color 0.25s, color 0.25s, background-color 0.25s, transform 0.2s;
+  cursor: pointer;
+}
+.chip:active {
+  transform: scale(0.96);
+}
+.chip:hover {
+  color: var(--color-bone);
+  border-color: rgb(244 235 217 / 0.45);
+}
+.chip[aria-pressed='true'],
+.chip[aria-checked='true'] {
+  color: var(--color-coal);
+  background: var(--color-bone);
+  border-color: var(--color-bone);
+}
+
+.field {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  border-bottom: 1px solid rgb(244 235 217 / 0.35);
+  padding: 0.5rem 0;
+  font-size: 1.35rem;
+  font-weight: 500;
+  color: var(--color-bone);
+  border-radius: 0;
+}
+.field:focus {
+  outline: none;
+  border-bottom-color: var(--brand);
+}
+
+.range {
+  appearance: none;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+}
+.range::-webkit-slider-runnable-track {
+  height: 2px;
+  background: rgb(244 235 217 / 0.35);
+}
+.range::-moz-range-track {
+  height: 2px;
+  background: rgb(244 235 217 / 0.35);
+}
+.range::-webkit-slider-thumb {
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -7px;
+  background: var(--color-bone);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  transition: transform 0.2s;
+}
+.range::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-bone);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+}
+.range:active::-webkit-slider-thumb {
+  transform: scale(1.3);
+}
+
+/* Mini-site (the visitor's page being assembled). Themed by inline CSS vars. */
+.site {
+  container-type: inline-size;
+  background: var(--s-bg);
+  color: var(--s-ink);
+  font-family: var(--s-body);
+  transition: background-color 0.5s, color 0.5s;
+}
+.site * {
+  transition-property: background-color, border-color, color;
+  transition-duration: 0.5s;
+}
+.site-head {
+  font-family: var(--s-head);
+  font-weight: var(--s-head-w);
+  font-stretch: var(--s-head-stretch);
+  letter-spacing: var(--s-head-track);
+  text-transform: var(--s-head-case);
+  line-height: 1;
+}
+/* Wireframe ghost shown while a block is being "built" */
+.block {
+  position: relative;
+}
+.block-ghost {
+  position: absolute;
+  inset: 4px;
+  border: 1px dashed var(--s-ink);
+  opacity: 0;
+  pointer-events: none;
+  display: grid;
+  place-items: center;
+  font: 500 9px/1 var(--font-sans);
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+/* Module blocks open/close with a grid-rows trick, no height animation */
+.fold {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.7s var(--ease-out-expo), opacity 0.5s;
+}
+.fold[data-open='true'] {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+.fold > div {
+  overflow: hidden;
+  min-height: 0;
+}
+
+.no-scrollbar {
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.site .float {
+  transition: opacity 0.5s, translate 0.5s var(--ease-out-expo);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+@keyframes pop {
+  0% {
+    transform: scale(0.2) rotate(-30deg);
+  }
+  60% {
+    transform: scale(1.35) rotate(6deg);
+  }
+}
+
+/* Photographs inside the visitor's page: optional treatment + a slow drift on hero frames */
+.site img {
+  filter: var(--s-filter, none);
+}
+.site .kb {
+  animation: kb 16s ease-in-out infinite alternate;
+}
+@keyframes kb {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.09) translate(-1.5%, 1%);
+  }
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    transition: none;
+  }
+  .fold,
+  .site,
+  .site * {
+    transition: none;
+  }
+  .site .kb,
+  .site [class*='animation:'] {
+    animation: none;
+  }
+}
