@@ -128,6 +128,8 @@ summary {
    page chrome, the mini-site inside the studio owns its own radii. */
 .btn {
   position: relative;
+  /* never squeezed by a neighbour: a clipped label reads as broken */
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   gap: 0.75rem;

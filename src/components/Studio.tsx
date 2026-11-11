@@ -680,8 +680,8 @@ export function Studio({ state, setState }: Props) {
       {/* ------------------------------------------------ Controls */}
       <div className="relative flex min-h-0 flex-1 flex-col border-t border-line bg-coal lg:order-1 lg:border-t-0 lg:border-r lg:pt-[68px]">
         <div className="ctl-in flex items-center justify-between gap-4 px-4 pt-3.5 lg:items-end lg:px-8 lg:pt-3">
-          <h2 className="display-narrow text-[1.9rem] whitespace-nowrap lg:text-[clamp(2.6rem,4vw,3.6rem)]">Ármala tú</h2>
-          <button type="button" onClick={surprise} className="btn !gap-2 !px-3 !py-2 lg:!px-3.5 lg:!py-2.5">
+          <h2 className="display-narrow min-w-0 truncate text-[1.9rem] lg:text-[clamp(2.4rem,3.2vw,3rem)]">Ármala tú</h2>
+          <button type="button" onClick={surprise} className="btn shrink-0 !gap-2 !px-3 !py-2 lg:!px-3.5 lg:!py-2.5">
             <Shuffle key={buildKey} size={15} weight="bold" className="[animation:pop_0.6s_var(--ease-out-expo)]" />
             Sorpréndeme
           </button>
