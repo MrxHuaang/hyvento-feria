@@ -205,6 +205,12 @@ summary {
   color: var(--color-bone);
   border-radius: 0;
 }
+textarea.field {
+  resize: vertical;
+  border: 1px solid rgb(244 235 217 / 0.3);
+  padding: 0.6rem 0.7rem;
+  font-family: inherit;
+}
 .field:focus {
   outline: none;
   border-bottom-color: var(--brand);
@@ -265,6 +271,19 @@ summary {
   text-transform: var(--s-head-case);
   line-height: 1;
 }
+/* Blocks can be picked on the page, like in a block editor */
+.block.pickable {
+  cursor: pointer;
+}
+.block.pickable:hover {
+  outline: 1px dashed #2f7bff;
+  outline-offset: -1px;
+}
+.block.pickable[data-sel] {
+  outline: 2px solid #2f7bff;
+  outline-offset: -2px;
+}
+
 /* Wireframe ghost shown while a block is being "built" */
 .block {
   position: relative;

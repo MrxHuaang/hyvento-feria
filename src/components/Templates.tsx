@@ -1,4 +1,4 @@
-import { useId, useState, type CSSProperties, type ReactNode } from 'react'
+import { Children, Fragment, isValidElement, useId, useState, type CSSProperties, type ReactNode } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
@@ -41,7 +41,14 @@ export interface Template {
   overlay: boolean
   header: ReactNode
   hero: ReactNode
+  /** classes every piece of the hero must carry (a template that is dark throughout, say) */
+  partClass?: string
   catalog: ReactNode
+}
+
+export interface BuiltTemplate extends Template {
+  /** the hero split into its top-level pieces, so each can be moved or removed on its own */
+  parts: ReactNode[]
 }
 
 const pad = 'px-[5.5cqw] @md:px-[4.5cqw]'
@@ -819,7 +826,7 @@ function gimnasio(ctx: TemplateCtx): Template {
       </div>
     ),
     hero: (
-      <div className="bg-[#0c0c0c] text-[#f4f4f1] [--s-accent:var(--s-accent-d)] [--s-ink:#f4f4f1]">
+      <>
         {/* Everything leans forward: type, tags and the photograph's cut */}
         <div className="relative h-[130cqw] overflow-hidden @md:h-[58cqw]">
           <div className="absolute inset-0 [clip-path:polygon(0_0,100%_0,100%_86%,0_100%)]">
@@ -893,8 +900,9 @@ function gimnasio(ctx: TemplateCtx): Template {
             <span className="text-(--s-accent)">con plan.</span>
           </p>
         </div>
-      </div>
+      </>
     ),
+    partClass: 'bg-[#0c0c0c] text-[#f4f4f1] [--s-accent:var(--s-accent-d)] [--s-ink:#f4f4f1]',
     catalog: (
       <div className={`bg-[#0c0c0c] text-[#f4f4f1] [--s-accent:var(--s-accent-d)] ${sect}`}>
         <h3 className="site-head -skew-x-6 text-[11cqw] leading-none @md:text-[5.4cqw]">{b.listTitle}</h3>
@@ -1012,8 +1020,11 @@ function pasteleria(ctx: TemplateCtx): Template {
   }
 }
 
-export function buildTemplate(ctx: TemplateCtx): Template {
+export function buildTemplate(ctx: TemplateCtx): BuiltTemplate {
   CW = ctx.charW
   SCALE = ctx.state.scale
-  return { restaurante, cafeteria, tienda, barberia, consultorio, gimnasio, pasteleria }[ctx.b.id](ctx)
+  const tpl = { restaurante, cafeteria, tienda, barberia, consultorio, gimnasio, pasteleria }[ctx.b.id](ctx)
+  const hero = tpl.hero
+  const parts = isValidElement<{ children?: ReactNode }>(hero) && hero.type === Fragment ? Children.toArray(hero.props.children) : [hero]
+  return { ...tpl, parts }
 }

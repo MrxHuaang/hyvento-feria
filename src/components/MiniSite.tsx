@@ -2,30 +2,80 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import {
+  ArrowDown,
+  ArrowUp,
   Clock,
+  Copy,
+  EyeSlash,
   LockSimple,
   MapPin,
   Moped,
   Sparkle,
   Star,
   Tag,
+  Trash,
   WhatsappLogo,
 } from '@phosphor-icons/react'
-import { FILTERS, FONTS, FONT_WIDTH, RADII, getBusiness, onColor, readable, type ModuleId, type SectionId, type StudioState } from '../lib/config'
+import { FILTERS, FONTS, FONT_WIDTH, RADII, blockLabel, getBusiness, onColor, readable, type Block as PageBlock, type ModuleId, type SectionId, type StudioState } from '../lib/config'
 import { reducedMotion } from '../lib/scroll'
 import { buildTemplate } from './Templates'
 import { LOGOS } from './Logos'
+import { renderGeneric } from './Blocks'
 
 /** Example marks a visitor can try before they bring their own logo. */
 
-/** One section of the visitor's page. Folds open/closed and has a wireframe ghost for the build animation. */
-function Block({ id, label, open = true, className = '', children }: { id: string; label: string; open?: boolean; className?: string; children: ReactNode }) {
+export type BlockAction = 'up' | 'down' | 'duplicate' | 'hide' | 'remove'
+
+interface BlockProps {
+  id: string
+  label: string
+  open?: boolean
+  className?: string
+  style?: CSSProperties
+  /** editable blocks can be picked on the page and show a toolbar when selected */
+  selected?: boolean
+  onSelect?: () => void
+  onAction?: (action: BlockAction) => void
+  canDuplicate?: boolean
+  children: ReactNode
+}
+
+/** One block of the visitor's page. Folds open/closed, has a wireframe ghost for the build
+    animation, and, like a block editor, can be picked and acted on right where it sits. */
+function Block({ id, label, open = true, className = '', style, selected, onSelect, onAction, canDuplicate, children }: BlockProps) {
+  const tools: [BlockAction, typeof ArrowUp, string][] = [
+    ['up', ArrowUp, 'Subir'],
+    ['down', ArrowDown, 'Bajar'],
+    ...(canDuplicate ? ([['duplicate', Copy, 'Duplicar']] as [BlockAction, typeof ArrowUp, string][]) : []),
+    ['hide', EyeSlash, 'Ocultar'],
+    ['remove', Trash, 'Eliminar'],
+  ]
   return (
     <div className={`fold ${className}`} data-open={open} data-block={id} aria-hidden={!open}>
       <div>
-        <div className="block">
+        <div className={`block ${onSelect ? 'pickable' : ''}`} data-sel={selected || undefined} style={style} onClick={onSelect}>
           <div className="block-body">{children}</div>
           <div className="block-ghost">{label}</div>
+          {selected && onAction && (
+            <div className="absolute top-2 right-2 z-[6] flex overflow-hidden rounded-[6px] bg-[#2f7bff] text-white shadow-[0_6px_20px_rgb(0_0_0/0.3)] [animation:rise_0.35s_var(--ease-out-expo)]">
+              <span className="border-r border-white/25 px-2 py-1.5 text-[10px] leading-none font-semibold">{label}</span>
+              {tools.map(([action, I, title]) => (
+                <button
+                  key={action}
+                  type="button"
+                  title={title}
+                  aria-label={title}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onAction(action)
+                  }}
+                  className="grid h-7 w-7 place-items-center transition-colors hover:bg-white/20"
+                >
+                  <I size={13} weight="bold" />
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -33,16 +83,6 @@ function Block({ id, label, open = true, className = '', children }: { id: strin
 }
 
 const DAYS = ['Hoy', 'Mañana', 'Sábado']
-const LABELS: Record<SectionId, string> = {
-  catalogo: 'Catálogo',
-  reservas: 'Reservas',
-  galeria: 'Galería',
-  resenas: 'Reseñas',
-  ubicacion: 'Mapa',
-  pagos: 'Pagos',
-  puntos: 'Puntos',
-  domicilios: 'Domicilios',
-}
 
 /**
  * The visitor's site, rendered for real (not a screenshot). Layout responds to its own
@@ -57,10 +97,21 @@ export interface Focus {
   n: number
 }
 
-export function MiniSite({ state, buildKey, focus, onStep }: { state: StudioState; buildKey: number; focus: Focus; onStep?: (label: string) => void }) {
+interface MiniSiteProps {
+  state: StudioState
+  buildKey: number
+  focus: Focus
+  onStep?: (label: string) => void
+  /** uid of the block picked in the editor */
+  selected?: string | null
+  onSelect?: (uid: string) => void
+  onAction?: (uid: string, action: BlockAction) => void
+}
+
+export function MiniSite({ state, buildKey, focus, onStep, selected, onSelect, onAction }: MiniSiteProps) {
   const root = useRef<HTMLDivElement>(null)
   const scroller = useRef<HTMLDivElement>(null)
-  const prevModules = useRef<ModuleId[]>(state.modules)
+  const prevUids = useRef<string[]>(state.blocks.map((x) => x.uid))
   const sel = useRef<HTMLDivElement>(null)
   const [day, setDay] = useState(0)
   const [slot, setSlot] = useState(2)
@@ -123,10 +174,11 @@ export function MiniSite({ state, buildKey, focus, onStep }: { state: StudioStat
     { scope: root, dependencies: [buildKey, state.business], revertOnUpdate: true },
   )
 
-  // A module switched on: its block drops in (outline first, then content), and we scroll to it.
+  // A new block: it drops in (outline first, then content), and we scroll to it.
   useEffect(() => {
-    const added = state.modules.find((m) => !prevModules.current.includes(m))
-    prevModules.current = state.modules
+    const uids = state.blocks.map((x) => x.uid)
+    const added = uids.find((u) => !prevUids.current.includes(u))
+    prevUids.current = uids
     const box = scroller.current
     if (!added || !box) return
     const el = box.querySelector<HTMLElement>(`[data-block="${added}"]`)
@@ -148,7 +200,7 @@ export function MiniSite({ state, buildKey, focus, onStep }: { state: StudioStat
     }
     const id = window.setTimeout(() => box.scrollTo({ top: Math.max(0, el.offsetTop - 24), behavior: still ? 'auto' : 'smooth' }), 240)
     return () => window.clearTimeout(id)
-  }, [state.modules])
+  }, [state.blocks])
 
   // Selection frame: like a design tool, a box with handles and a name tag travels to the
   // block being edited, so the visitor sees where each change lands.
@@ -188,6 +240,32 @@ export function MiniSite({ state, buildKey, focus, onStep }: { state: StudioStat
   const title = 'site-head text-[7.4cqw] @md:text-[3.7cqw]'
   const brandBtn = 'rounded-(--s-rb) bg-(--s-brand) font-semibold text-(--s-on-brand)'
   const gallery = [...b.photos, ...b.items.map((i) => i.img)].slice(0, 5)
+
+  const onBrand = onColor(state.brand)
+  const surface = (v: PageBlock['bg']): CSSProperties | undefined => {
+    if (v === 'suave') return { background: 'var(--s-soft)' }
+    if (v === 'marca')
+      return {
+        background: state.brand,
+        color: onBrand,
+        '--s-ink': onBrand,
+        '--s-bg': state.brand,
+        '--s-accent': onBrand,
+        '--s-brand': onBrand,
+        '--s-on-brand': state.brand,
+        '--s-soft': onBrand === '#16110b' ? 'rgb(0 0 0 / 0.1)' : 'rgb(255 255 255 / 0.14)',
+      } as CSSProperties
+    if (v === 'oscuro')
+      return {
+        background: '#14110e',
+        color: '#f6f1e6',
+        '--s-ink': '#f6f1e6',
+        '--s-bg': '#14110e',
+        '--s-accent': readable(state.brand, '#14110e', '#f6f1e6'),
+        '--s-soft': 'rgb(255 255 255 / 0.07)',
+      } as CSSProperties
+    return undefined
+  }
 
   const tpl = buildTemplate({ b, state, name, tagline, centered, Logo, charW: FONT_WIDTH[state.font] })
 
@@ -336,15 +414,31 @@ export function MiniSite({ state, buildKey, focus, onStep }: { state: StudioStat
           <span className={`absolute top-[21px] right-[5.5cqw] text-[10px] font-semibold ${has('idiomas') ? '' : 'hidden'} ${tpl.overlay ? 'text-white' : ''} @md:right-[50%]`}>ES · EN</span>
         </Block>
 
-        <Block id="hero" label="Portada">
-          {tpl.hero}
-        </Block>
-
-        {state.order.map((id) => (
-          <Block key={id} id={id} label={LABELS[id]} open={has(id)}>
-            {sections[id]}
-          </Block>
-        ))}
+        {state.blocks.map((block) => {
+          const label = blockLabel(block, state.business)
+          const isTpl = block.type === 'tpl'
+          return (
+            <Block
+              key={block.uid}
+              id={block.uid}
+              label={label}
+              open={!block.hidden && !block.closing}
+              style={isTpl ? undefined : surface(block.bg)}
+              selected={selected === block.uid}
+              onSelect={onSelect ? () => onSelect(block.uid) : undefined}
+              onAction={onAction ? (action) => onAction(block.uid, action) : undefined}
+              canDuplicate={!isTpl}
+            >
+              {isTpl ? (
+                <div className={tpl.partClass}>{tpl.parts[block.part ?? 0]}</div>
+              ) : block.type in sections ? (
+                sections[block.type as SectionId]
+              ) : (
+                renderGeneric(block, b)
+              )}
+            </Block>
+          )
+        })}
 
         <div ref={sel} className="sel pointer-events-none invisible absolute inset-x-1 top-0 z-[5] border-2 border-[#2f7bff] opacity-0">
           <span className="absolute -top-px left-[-2px] -translate-y-full bg-[#2f7bff] px-1.5 py-0.5 text-[10px] leading-none font-semibold text-white">{focus.label}</span>

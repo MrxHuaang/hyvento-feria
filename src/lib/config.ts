@@ -8,7 +8,27 @@ const img = (id: string, w = 900) => `https://images.unsplash.com/photo-${id}?w=
 
 export type BusinessId = 'restaurante' | 'cafeteria' | 'tienda' | 'barberia' | 'consultorio' | 'gimnasio' | 'pasteleria'
 export type SectionId = 'catalogo' | 'reservas' | 'galeria' | 'resenas' | 'ubicacion' | 'pagos' | 'puntos' | 'domicilios'
-export type ModuleId = SectionId | 'whatsapp' | 'ia' | 'promo' | 'idiomas'
+export type ExtraId = 'whatsapp' | 'ia' | 'promo' | 'idiomas'
+export type ModuleId = SectionId | ExtraId
+/** Free blocks that work on any business page */
+export type GenericId = 'texto' | 'cta' | 'imagen' | 'cifras' | 'faq' | 'cinta' | 'equipo' | 'boletin'
+export type BlockBg = 'pagina' | 'suave' | 'marca' | 'oscuro'
+
+/**
+ * One block of the page. `tpl` blocks are the signature pieces of the chosen template
+ * (portada, cinta, ...), the rest are sections anyone can add, move, duplicate or remove.
+ */
+export interface Block {
+  uid: string
+  type: 'tpl' | SectionId | GenericId
+  /** which piece of the template, for `tpl` blocks */
+  part?: number
+  hidden?: boolean
+  /** set for a moment while the block folds shut before being removed */
+  closing?: boolean
+  bg?: BlockBg
+  props?: Record<string, string>
+}
 export type FontId = 'moderna' | 'clasica' | 'elegante' | 'editorial' | 'cartel' | 'impacto' | 'amable' | 'tecnica' | 'amano' | 'audaz'
 export type Mode = 'claro' | 'oscuro'
 export type Radius = 'recto' | 'suave' | 'pildora'
@@ -266,6 +286,58 @@ export const MODULES: Module[] = [
   { id: 'idiomas', label: 'Español e inglés', price: 300000, days: 3 },
 ]
 
+/** Names of each template's own pieces, in order. Must match the template's top-level blocks. */
+export const TEMPLATE_PARTS: Record<BusinessId, string[]> = {
+  restaurante: ['Portada', 'Cinta', 'Declaración', 'Banda de plato'],
+  cafeteria: ['Portada', 'Encuesta', 'Misión'],
+  tienda: ['Portada', 'Categorías', 'Promesa'],
+  barberia: ['Portada', 'Collage', 'Video'],
+  consultorio: ['Portada', 'Garantías', 'Primera visita', 'Banda'],
+  gimnasio: ['Portada', 'Cinta', 'Horario', 'Banda'],
+  pasteleria: ['Portada', 'Del horno'],
+}
+
+export const GENERIC_IDS: GenericId[] = ['texto', 'cta', 'imagen', 'cifras', 'faq', 'cinta', 'equipo', 'boletin']
+
+export const BLOCK_META: Record<SectionId | GenericId, { label: string; hint: string; price: number; days: number }> = {
+  catalogo: { label: 'Menú o catálogo', hint: 'Productos con precio', price: 350000, days: 3 },
+  reservas: { label: 'Reservas y citas', hint: 'El cliente agenda solo', price: 450000, days: 4 },
+  galeria: { label: 'Galería de fotos', hint: 'Tu local y tu trabajo', price: 180000, days: 1 },
+  resenas: { label: 'Reseñas', hint: 'Lo que dicen de ti', price: 150000, days: 1 },
+  ubicacion: { label: 'Mapa y horarios', hint: 'Cómo llegar y cuándo', price: 120000, days: 1 },
+  pagos: { label: 'Pagos en línea', hint: 'Nequi, PSE y tarjeta', price: 600000, days: 5 },
+  puntos: { label: 'Tarjeta de puntos', hint: 'Premia al que vuelve', price: 520000, days: 4 },
+  domicilios: { label: 'Domicilios', hint: 'Zonas y costo de envío', price: 400000, days: 3 },
+  texto: { label: 'Texto', hint: 'Título y párrafo', price: 60000, days: 1 },
+  cta: { label: 'Llamada a la acción', hint: 'Frase grande y botón', price: 60000, days: 1 },
+  imagen: { label: 'Imagen ancha', hint: 'Foto de lado a lado', price: 50000, days: 1 },
+  cifras: { label: 'Cifras', hint: 'Tres números que venden', price: 80000, days: 1 },
+  faq: { label: 'Preguntas frecuentes', hint: 'Se abren al tocar', price: 120000, days: 1 },
+  cinta: { label: 'Cinta en movimiento', hint: 'Texto que corre', price: 50000, days: 1 },
+  equipo: { label: 'Equipo', hint: 'Las caras del negocio', price: 140000, days: 2 },
+  boletin: { label: 'Boletín', hint: 'Captura correos', price: 160000, days: 2 },
+}
+
+export const EXTRAS: { id: ExtraId; label: string; price: number; days: number }[] = [
+  { id: 'whatsapp', label: 'Botón de WhatsApp', price: 90000, days: 1 },
+  { id: 'ia', label: 'Asistente con IA', price: 900000, days: 6 },
+  { id: 'promo', label: 'Cinta de promociones', price: 80000, days: 1 },
+  { id: 'idiomas', label: 'Español e inglés', price: 300000, days: 3 },
+]
+
+export const blockLabel = (block: Block, business: BusinessId) =>
+  block.type === 'tpl' ? (TEMPLATE_PARTS[business][block.part ?? 0] ?? 'Bloque') : BLOCK_META[block.type].label
+
+/** The template's own pieces as blocks. The first one keeps the id "hero" so edits can find it. */
+export const templateBlocks = (business: BusinessId): Block[] =>
+  TEMPLATE_PARTS[business].map((_, i) => ({ uid: i === 0 ? 'hero' : `tpl-${i}`, type: 'tpl', part: i }))
+
+export const initialBlocks = (business: BusinessId): Block[] => [
+  ...templateBlocks(business),
+  { uid: 'catalogo', type: 'catalogo' },
+  { uid: 'reservas', type: 'reservas' },
+]
+
 export const SECTION_IDS: SectionId[] = ['catalogo', 'reservas', 'galeria', 'resenas', 'ubicacion', 'pagos', 'puntos', 'domicilios']
 export const isSection = (id: ModuleId): id is SectionId => (SECTION_IDS as string[]).includes(id)
 export const moduleLabel = (id: ModuleId) => MODULES.find((m) => m.id === id)!.label
@@ -354,8 +426,9 @@ export interface StudioState {
   scale: number
   logoPreset: number
   logo: string | null
+  /** floating add-ons: WhatsApp button, AI assistant, promo ribbon, languages */
   modules: ModuleId[]
-  order: SectionId[]
+  blocks: Block[]
 }
 
 export const initialState = (): StudioState => {
@@ -374,8 +447,8 @@ export const initialState = (): StudioState => {
     scale: 1,
     logoPreset: 0,
     logo: null,
-    modules: ['catalogo', 'reservas', 'whatsapp'],
-    order: [...SECTION_IDS],
+    modules: ['whatsapp'],
+    blocks: initialBlocks(b.id),
   }
 }
 
@@ -383,10 +456,15 @@ export const getBusiness = (id: BusinessId) => BUSINESSES.find((b) => b.id === i
 
 export function quote(s: StudioState) {
   const b = getBusiness(s.business)
-  const mods = MODULES.filter((m) => s.modules.includes(m.id))
-  const total = b.base + mods.reduce((a, m) => a + m.price, 0)
-  const days = BASE_DAYS + mods.reduce((a, m) => a + m.days, 0)
-  return { base: b.base, mods, total, days }
+  const items = [
+    ...s.blocks
+      .filter((bl) => bl.type !== 'tpl' && !bl.hidden && !bl.closing)
+      .map((bl) => ({ key: bl.uid, ...BLOCK_META[bl.type as SectionId | GenericId] })),
+    ...EXTRAS.filter((e) => s.modules.includes(e.id)).map((e) => ({ key: e.id, hint: '', ...e })),
+  ]
+  const total = b.base + items.reduce((a, m) => a + m.price, 0)
+  const days = BASE_DAYS + items.reduce((a, m) => a + m.days, 0)
+  return { base: b.base, mods: items, total, days }
 }
 
 /** Quote values are symbolic. The currency is a made-up one, the "eurodólar", so nobody reads it as a real price. */

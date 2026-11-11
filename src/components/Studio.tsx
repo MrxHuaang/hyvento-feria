@@ -5,17 +5,24 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
 import {
   ArrowClockwise,
+  ArrowDown,
   ArrowRight,
+  ArrowUp,
   Barbell,
   Cake,
+  CaretLeft,
   Check,
+  Copy,
   Coffee,
   Desktop,
   DeviceMobile,
   Devices,
   DotsSixVertical,
+  Eye,
+  EyeSlash,
   ForkKnife,
   Moon,
+  Plus,
   Scissors,
   Shuffle,
   Storefront,
@@ -23,30 +30,40 @@ import {
   TextAlignCenter,
   TextAlignLeft,
   Tooth,
+  Trash,
   UploadSimple,
   WhatsappLogo,
   X,
   type Icon,
 } from '@phosphor-icons/react'
-import { MiniSite, type Focus } from './MiniSite'
+import { MiniSite, type BlockAction, type Focus } from './MiniSite'
+import { FIELDS, defaults } from './Blocks'
 import { LOGOS } from './Logos'
 import { HexMark, Scratches } from './Art'
 import {
+  BLOCK_META,
   BUSINESSES,
+  EXTRAS,
   FILTERS,
   FONTS,
+  GENERIC_IDS,
   PRESETS,
-  MODULES,
   RADII,
+  SECTION_IDS,
   SWATCHES,
+  TEMPLATE_PARTS,
   WHATSAPP_NUMBER,
-  pts,
+  blockLabel,
   getBusiness,
-  moduleLabel,
+  pts,
   quote,
+  templateBlocks,
+  type Block,
+  type BlockBg,
   type BusinessId,
+  type ExtraId,
   type FontId,
-  type ModuleId,
+  type GenericId,
   type PhotoFilter,
   type Radius,
   type SectionId,
@@ -96,7 +113,7 @@ type Device = 'ambos' | 'pc' | 'cel'
 const TABS: [Tab, string][] = [
   ['marca', 'Tu marca'],
   ['estilo', 'Estilo'],
-  ['secciones', 'Secciones'],
+  ['secciones', 'Bloques'],
 ]
 const DEVICES: [Device, Icon, string][] = [
   ['ambos', Devices, 'Ambos'],
@@ -112,19 +129,23 @@ interface Props {
 export function Studio({ state, setState }: Props) {
   const root = useRef<HTMLElement>(null)
   const flip = useRef<Flip.FlipState | null>(null)
-  const drag = useRef<SectionId | null>(null)
+  const drag = useRef<string | null>(null)
   const [buildKey, setBuildKey] = useState(0)
   const [log, setLog] = useState('Esperando tus datos')
   const [tab, setTab] = useState<Tab>('marca')
   const [device, setDevice] = useState<Device>('ambos')
-  const [dragging, setDragging] = useState<SectionId | null>(null)
+  const [dragging, setDragging] = useState<string | null>(null)
+  /** uid of the block picked for editing, and whether the block inserter is open */
+  const [picked, setPicked] = useState<string | null>(null)
+  const [inserter, setInserter] = useState(false)
   const [ticket, setTicket] = useState(false)
   const [focus, setFocus] = useState<Focus>({ id: 'hero', label: 'Portada', n: 0 })
 
   const b = getBusiness(state.business)
   const q = quote(state)
   const name = state.name.trim() || b.defaultName
-  const activeSections = state.order.filter((id) => state.modules.includes(id))
+  const present = state.blocks.filter((x) => x.type === 'tpl').map((x) => x.part ?? 0)
+  const missingParts = TEMPLATE_PARTS[state.business].map((_, i) => i).filter((i) => !present.includes(i))
 
   /* Builder cursor. A pointer comes in from the controls and does the edit where it happens:
      it types the headline when the type changes, dabs each button when the colour changes,
@@ -301,17 +322,115 @@ export function Studio({ state, setState }: Props) {
 
   const pickBusiness = (id: BusinessId) => {
     const next = getBusiness(id)
-    patch({ business: id, brand: next.brand, font: next.font, mode: next.mode, photo: 0, tagline: '' }, `Plantilla ${next.label} cargada`, null)
+    patch(
+      { business: id, brand: next.brand, font: next.font, mode: next.mode, photo: 0, tagline: '', blocks: [...templateBlocks(id), ...state.blocks.filter((x) => x.type !== 'tpl' && !x.closing)] },
+      `Plantilla ${next.label} cargada`,
+      null,
+    )
+    setPicked(null)
     setBuildKey((k) => Math.max(1, k))
   }
 
-  const toggleModule = (id: ModuleId) => {
-    setLog(state.modules.includes(id) ? `${moduleLabel(id)} retirado` : `${moduleLabel(id)} instalado`)
-    if (!state.modules.includes(id) && id !== 'whatsapp' && id !== 'ia' && id !== 'idiomas') window.setTimeout(() => select(id, moduleLabel(id), 'carry'), 420)
+  const toggleExtra = (id: ExtraId) => {
+    const label = EXTRAS.find((e) => e.id === id)!.label
+    setLog(state.modules.includes(id) ? `${label} retirado` : `${label} instalado`)
     setState((s) => ({ ...s, modules: s.modules.includes(id) ? s.modules.filter((m) => m !== id) : [...s.modules, id] }))
   }
 
+  /* ------------------------------------------------------------ Blocks: add, move, copy, hide, remove */
+  const labelOf = (bl: Block) => blockLabel(bl, state.business)
+  const setBlocks = (fn: (blocks: Block[]) => Block[]) => setState((s) => ({ ...s, blocks: fn(s.blocks) }))
+  const pickedBlock = state.blocks.find((x) => x.uid === picked && !x.closing) ?? null
+
+  const addBlock = (type: Block['type'], part?: number) => {
+    const uid = type === 'tpl' ? (part === 0 ? 'hero' : `tpl-${part}`) : state.blocks.some((x) => x.uid === type) ? `${type}-${Date.now().toString(36)}` : type
+    const block: Block =
+      type === 'tpl' ? { uid, type, part } : { uid, type, props: (GENERIC_IDS as string[]).includes(type) ? defaults(type as GenericId, b, name) : undefined }
+    const label = labelOf(block)
+    captureFlip()
+    setBlocks((blocks) => {
+      // template pieces go back to their own slot; anything else lands under the picked block, or at the end
+      if (type === 'tpl') {
+        const before = blocks.findIndex((x) => x.type !== 'tpl' || (x.part ?? 0) > (part ?? 0))
+        const at = before === -1 ? blocks.length : before
+        return [...blocks.slice(0, at), block, ...blocks.slice(at)]
+      }
+      const i = blocks.findIndex((x) => x.uid === picked)
+      const at = i === -1 ? blocks.length : i + 1
+      return [...blocks.slice(0, at), block, ...blocks.slice(at)]
+    })
+    setInserter(false)
+    setPicked(uid)
+    setLog(`${label} añadido`)
+    window.setTimeout(() => select(uid, label, 'carry'), 420)
+  }
+
+  const removeBlock = (uid: string) => {
+    const bl = state.blocks.find((x) => x.uid === uid)
+    if (!bl) return
+    setLog(`${labelOf(bl)} eliminado`)
+    if (picked === uid) setPicked(null)
+    // fold it shut first, then take it out of the page
+    setBlocks((blocks) => blocks.map((x) => (x.uid === uid ? { ...x, closing: true } : x)))
+    window.setTimeout(() => setBlocks((blocks) => blocks.filter((x) => x.uid !== uid)), 600)
+  }
+
+  const duplicateBlock = (uid: string) => {
+    const bl = state.blocks.find((x) => x.uid === uid)
+    if (!bl || bl.type === 'tpl') return
+    const copy: Block = { ...bl, uid: `${bl.type}-${Date.now().toString(36)}`, props: bl.props ? { ...bl.props } : undefined }
+    captureFlip()
+    setBlocks((blocks) => {
+      const i = blocks.findIndex((x) => x.uid === uid)
+      return [...blocks.slice(0, i + 1), copy, ...blocks.slice(i + 1)]
+    })
+    setPicked(copy.uid)
+    setLog(`${labelOf(bl)} duplicado`)
+    window.setTimeout(() => select(copy.uid, labelOf(bl), 'carry'), 420)
+  }
+
+  const toggleHidden = (uid: string) => {
+    const bl = state.blocks.find((x) => x.uid === uid)
+    if (!bl) return
+    setLog(bl.hidden ? `${labelOf(bl)} visible` : `${labelOf(bl)} oculto`)
+    setBlocks((blocks) => blocks.map((x) => (x.uid === uid ? { ...x, hidden: !x.hidden } : x)))
+  }
+
+  const moveBlock = (uid: string, dir: -1 | 1) => {
+    const i = state.blocks.findIndex((x) => x.uid === uid)
+    const j = i + dir
+    if (i === -1 || j < 0 || j >= state.blocks.length) return
+    captureFlip()
+    setBlocks((blocks) => {
+      const next = [...blocks]
+      ;[next[i], next[j]] = [next[j], next[i]]
+      return next
+    })
+    setLog(`${labelOf(state.blocks[i])} movido`)
+    select(uid, labelOf(state.blocks[i]))
+  }
+
+  const updateBlock = (uid: string, change: Partial<Block>) => setBlocks((blocks) => blocks.map((x) => (x.uid === uid ? { ...x, ...change } : x)))
+  const updateProp = (uid: string, key: string, value: string) =>
+    setBlocks((blocks) => blocks.map((x) => (x.uid === uid ? { ...x, props: { ...x.props, [key]: value } } : x)))
+
+  const onBlockAction = (uid: string, action: BlockAction) => {
+    if (action === 'up') moveBlock(uid, -1)
+    else if (action === 'down') moveBlock(uid, 1)
+    else if (action === 'duplicate') duplicateBlock(uid)
+    else if (action === 'hide') toggleHidden(uid)
+    else removeBlock(uid)
+  }
+
+  /** Picking a block on the page opens its settings in the Bloques tab. */
+  const pickBlock = (uid: string) => {
+    setPicked(uid)
+    setTab('secciones')
+    setInserter(false)
+  }
+
   const surprise = () => {
+    captureFlip()
     patch(
       {
         brand: pick(SWATCHES),
@@ -323,7 +442,8 @@ export function Studio({ state, setState }: Props) {
         filter: pick(Object.keys(FILTERS) as PhotoFilter[]),
         logoPreset: Math.floor(Math.random() * LOGOS.length),
         logo: null,
-        order: [...state.order].sort(() => Math.random() - 0.5),
+        // the cover stays on top, everything under it is reshuffled
+        blocks: [state.blocks[0], ...state.blocks.slice(1).sort(() => Math.random() - 0.5)].filter(Boolean),
       },
       'Nuevo estilo al azar',
       null,
@@ -338,36 +458,41 @@ export function Studio({ state, setState }: Props) {
   }
 
   /* Drag to reorder: the row under the pointer trades places with the one being dragged,
-     and both the list and the sections inside the site glide to their new spots. */
-  const onDragStart = (e: RPointerEvent, id: SectionId) => {
+     and both the list and the blocks on the page glide to their new spots. */
+  const onDragStart = (e: RPointerEvent, uid: string) => {
+    if ((e.target as HTMLElement).closest('button')) return
     e.currentTarget.setPointerCapture(e.pointerId)
-    drag.current = id
-    setDragging(id)
+    drag.current = uid
+    setDragging(uid)
   }
   const onDragMove = (e: RPointerEvent) => {
-    const id = drag.current
-    if (!id) return
+    const uid = drag.current
+    if (!uid) return
     const rows = Array.from(root.current!.querySelectorAll<HTMLElement>('.sort-row'))
     const over = rows.find((r) => {
       const box = r.getBoundingClientRect()
       return e.clientY >= box.top && e.clientY <= box.bottom
     })
-    const target = over?.dataset.id as SectionId | undefined
-    if (!target || target === id) return
+    const target = over?.dataset.id
+    if (!target || target === uid) return
     captureFlip()
-    setState((s) => {
-      const from = s.order.indexOf(id)
-      const to = s.order.indexOf(target)
-      const order = s.order.filter((x) => x !== id)
-      order.splice(order.indexOf(target) + (from < to ? 1 : 0), 0, id)
-      return { ...s, order }
+    setBlocks((blocks) => {
+      const from = blocks.findIndex((x) => x.uid === uid)
+      const to = blocks.findIndex((x) => x.uid === target)
+      if (from === -1 || to === -1) return blocks
+      const next = blocks.filter((x) => x.uid !== uid)
+      next.splice(next.findIndex((x) => x.uid === target) + (from < to ? 1 : 0), 0, blocks[from])
+      return next
     })
-    setLog(`${moduleLabel(id)} movido`)
-    select(id, moduleLabel(id))
+    const bl = state.blocks.find((x) => x.uid === uid)
+    if (bl) setLog(`${labelOf(bl)} movido`)
   }
   const onDragEnd = () => {
+    const uid = drag.current
     drag.current = null
     setDragging(null)
+    const bl = state.blocks.find((x) => x.uid === uid)
+    if (bl) select(bl.uid, labelOf(bl))
   }
 
   useLayoutEffect(() => {
@@ -375,7 +500,7 @@ export function Studio({ state, setState }: Props) {
     flip.current = null
     if (!snapshot || reducedMotion()) return
     Flip.from(snapshot, { duration: 0.65, ease: 'expo.out' })
-  }, [state.order])
+  }, [state.blocks])
 
   // A colour change washes over the frames before they settle back to cream
   useEffect(() => {
@@ -528,7 +653,7 @@ export function Studio({ state, setState }: Props) {
                   <div className="w-12" />
                 </div>
                 <div className="min-h-0 flex-1">
-                  <MiniSite state={state} buildKey={buildKey} focus={focus} onStep={(l) => setLog(l ? `Montando ${l.toLowerCase()}` : 'Página lista')} />
+                  <MiniSite state={state} buildKey={buildKey} focus={focus} selected={picked} onSelect={pickBlock} onAction={onBlockAction} onStep={(l) => setLog(l ? `Montando ${l.toLowerCase()}` : 'Página lista')} />
                 </div>
               </div>
             </div>
@@ -541,7 +666,7 @@ export function Studio({ state, setState }: Props) {
             >
               <div className="frame-in frame-edge h-full overflow-hidden rounded-[18px] border border-line bg-coal lg:rounded-[38px] lg:border-[4px] lg:border-bone lg:p-[5px] lg:shadow-[0_40px_80px_rgb(0_0_0/0.6)]">
                 <div className="h-full overflow-hidden lg:rounded-[29px]">
-                  <MiniSite state={state} buildKey={buildKey} focus={focus} />
+                  <MiniSite state={state} buildKey={buildKey} focus={focus} selected={picked} onSelect={pickBlock} onAction={onBlockAction} />
                 </div>
               </div>
             </div>
@@ -819,60 +944,249 @@ export function Studio({ state, setState }: Props) {
               </>
             )}
 
-            {tab === 'secciones' && (
-              <>
-                <div>
-                  <span className={ctlTitle}>¿Qué necesita tu página?</span>
-                  <div className="grid grid-cols-2 gap-2">
-                    {MODULES.map((m) => {
-                      const on = state.modules.includes(m.id)
-                      return (
-                        <button
-                          key={m.id}
-                          type="button"
-                          role="switch"
-                          aria-checked={on}
-                          onClick={() => toggleModule(m.id)}
-                          className={`flex items-start gap-2.5 border p-2.5 text-left transition-[color,background-color,border-color,transform] active:scale-[0.97] ${on ? 'border-bone bg-bone text-coal' : 'border-line hover:border-bone/50'}`}
-                        >
-                          <span className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center border ${on ? 'border-coal bg-coal text-bone' : 'border-bone/40'}`}>{on && <Check size={11} weight="bold" className="[animation:pop_0.45s_var(--ease-out-expo)]" />}</span>
-                          <span className="min-w-0">
-                            <span className="block text-[13px] leading-tight font-medium">{m.label}</span>
-                            <span className={`mt-1 block text-[12px] tabular-nums ${on ? 'opacity-70' : 'text-mute'}`}>+{pts(m.price)}</span>
-                          </span>
-                        </button>
-                      )
-                    })}
+            {tab === 'secciones' &&
+              (pickedBlock ? (
+                /* ------------------------------ Inspector: settings of the picked block */
+                <>
+                  <div>
+                    <button type="button" onClick={() => setPicked(null)} className="label mb-4 flex items-center gap-2 text-mute transition-colors hover:text-bone">
+                      <CaretLeft size={13} weight="bold" /> Todos los bloques
+                    </button>
+                    <p className="display-narrow text-[2.2rem] leading-none">{labelOf(pickedBlock)}</p>
+                    <p className="mt-1.5 text-[13px] text-mute">
+                      {pickedBlock.type === 'tpl' ? 'Pieza propia de esta plantilla. Sigue tu marca y tu estilo.' : `${BLOCK_META[pickedBlock.type].hint}. +${pts(BLOCK_META[pickedBlock.type].price)}`}
+                    </p>
                   </div>
-                </div>
 
-                <div>
-                  <span className={ctlTitle}>Arrastra para cambiar el orden</span>
-                  {activeSections.length === 0 ? (
-                    <p className="border border-dashed border-line p-4 text-[13px] text-mute">Activa una sección arriba y aparecerá aquí para ordenarla.</p>
-                  ) : (
-                    <ul className="flex flex-col gap-1.5">
-                      {activeSections.map((id) => (
-                        <li
-                          key={id}
-                          data-id={id}
-                          onPointerDown={(e) => onDragStart(e, id)}
-                          onPointerMove={onDragMove}
-                          onPointerUp={onDragEnd}
-                          onPointerCancel={onDragEnd}
-                          className={`sort-row flex cursor-grab touch-none items-center gap-3 border px-3 py-2.5 text-[14px] select-none active:cursor-grabbing ${
-                            dragging === id ? 'z-[1] border-bone bg-bone text-coal shadow-[0_14px_30px_rgb(0_0_0/0.5)]' : 'border-line bg-coal-2'
-                          }`}
-                        >
-                          <DotsSixVertical size={18} weight="bold" className="opacity-60" />
-                          {moduleLabel(id)}
-                        </li>
-                      ))}
-                    </ul>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {(
+                      [
+                        ['up', ArrowUp, 'Subir'],
+                        ['down', ArrowDown, 'Bajar'],
+                        ['duplicate', Copy, 'Duplicar'],
+                        ['hide', pickedBlock.hidden ? Eye : EyeSlash, pickedBlock.hidden ? 'Mostrar' : 'Ocultar'],
+                        ['remove', Trash, 'Eliminar'],
+                      ] as [BlockAction, Icon, string][]
+                    ).map(([action, I, title]) => (
+                      <button
+                        key={action}
+                        type="button"
+                        disabled={action === 'duplicate' && pickedBlock.type === 'tpl'}
+                        onClick={() => onBlockAction(pickedBlock.uid, action)}
+                        className="flex flex-col items-center gap-1.5 border border-line py-2.5 text-[11px] text-mute transition-colors hover:border-bone/60 hover:text-bone disabled:opacity-30 disabled:hover:border-line"
+                      >
+                        <I size={17} />
+                        {title}
+                      </button>
+                    ))}
+                  </div>
+
+                  {pickedBlock.type !== 'tpl' && (
+                    <div>
+                      <span className={ctlTitle}>Fondo del bloque</span>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {(
+                          [
+                            ['pagina', 'Página'],
+                            ['suave', 'Suave'],
+                            ['marca', 'Tu color'],
+                            ['oscuro', 'Oscuro'],
+                          ] as [BlockBg, string][]
+                        ).map(([v, label]) => (
+                          <button
+                            key={v}
+                            type="button"
+                            aria-pressed={(pickedBlock.bg ?? 'pagina') === v}
+                            onClick={() => {
+                              updateBlock(pickedBlock.uid, { bg: v })
+                              setLog(`Fondo ${label.toLowerCase()}`)
+                              select(pickedBlock.uid, labelOf(pickedBlock), 'mode')
+                            }}
+                            className="group border border-line p-1.5 text-left aria-pressed:border-bone"
+                          >
+                            <i
+                              className="block h-7 border border-black/10"
+                              style={{ background: v === 'pagina' ? (state.mode === 'oscuro' ? '#14110e' : '#fbf8f2') : v === 'suave' ? (state.mode === 'oscuro' ? '#27231e' : '#ece8e0') : v === 'marca' ? state.brand : '#14110e' }}
+                            />
+                            <span className="mt-1 block text-[11px] text-mute group-aria-pressed:text-bone">{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   )}
-                </div>
-              </>
-            )}
+
+                  {pickedBlock.type === 'imagen' && (
+                    <div>
+                      <span className={ctlTitle}>Qué foto</span>
+                      <div className="grid grid-cols-4 gap-1.5">
+                        {[...b.photos, ...b.items.map((i) => i.img)].slice(0, 4).map((src, i) => (
+                          <button
+                            key={src + i}
+                            type="button"
+                            aria-label={`Foto ${i + 1}`}
+                            aria-pressed={Number(pickedBlock.props?.photo ?? 1) === i}
+                            onClick={() => {
+                              updateProp(pickedBlock.uid, 'photo', String(i))
+                              select(pickedBlock.uid, labelOf(pickedBlock), 'photo')
+                            }}
+                            className="aspect-[4/3] overflow-hidden border-2 border-transparent opacity-60 transition-opacity hover:opacity-100 aria-pressed:border-bone aria-pressed:opacity-100"
+                          >
+                            <img src={src} alt="" className="h-full w-full object-cover" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {pickedBlock.type !== 'tpl' && pickedBlock.type in FIELDS && (
+                    <div className="flex flex-col gap-5">
+                      {FIELDS[pickedBlock.type as GenericId].map((field) => (
+                        <div key={field.key}>
+                          <label htmlFor={`f-${field.key}`} className={ctlTitle}>
+                            {field.label}
+                          </label>
+                          {field.long ? (
+                            <textarea
+                              id={`f-${field.key}`}
+                              rows={3}
+                              className="field !text-[0.95rem] leading-snug"
+                              value={pickedBlock.props?.[field.key] ?? ''}
+                              onChange={(e) => updateProp(pickedBlock.uid, field.key, e.target.value)}
+                            />
+                          ) : (
+                            <input
+                              id={`f-${field.key}`}
+                              className="field !text-[1.05rem]"
+                              value={pickedBlock.props?.[field.key] ?? ''}
+                              autoComplete="off"
+                              onChange={(e) => updateProp(pickedBlock.uid, field.key, e.target.value)}
+                            />
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              ) : (
+                /* ------------------------------ Layers: every block on the page, in order */
+                <>
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => setInserter((v) => !v)}
+                      aria-expanded={inserter}
+                      className={`flex w-full items-center justify-between border px-4 py-3.5 text-[14px] font-semibold transition-colors ${inserter ? 'border-bone bg-bone text-coal' : 'border-bone/50 hover:bg-bone hover:text-coal'}`}
+                    >
+                      Añadir bloque
+                      <Plus size={17} weight="bold" className={`transition-transform duration-500 ease-[var(--ease-out-expo)] ${inserter ? 'rotate-45' : ''}`} />
+                    </button>
+
+                    <div className="fold" data-open={inserter}>
+                      <div>
+                        <div className="flex flex-col gap-5 pt-5">
+                          {missingParts.length > 0 && (
+                            <div>
+                              <span className={ctlTitle}>De esta plantilla</span>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {missingParts.map((part) => (
+                                  <button key={part} type="button" onClick={() => addBlock('tpl', part)} className="border border-line p-2.5 text-left text-[13px] font-medium transition-colors hover:border-bone/60">
+                                    {TEMPLATE_PARTS[state.business][part]}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {(
+                            [
+                              ['Para vender', SECTION_IDS],
+                              ['Para contar', GENERIC_IDS],
+                            ] as [string, (SectionId | GenericId)[]][]
+                          ).map(([group, ids]) => (
+                            <div key={group}>
+                              <span className={ctlTitle}>{group}</span>
+                              <div className="grid grid-cols-2 gap-1.5">
+                                {ids.map((id) => (
+                                  <button
+                                    key={id}
+                                    type="button"
+                                    onClick={() => addBlock(id)}
+                                    className="group border border-line p-2.5 text-left transition-[border-color,transform] hover:-translate-y-0.5 hover:border-bone/60 active:scale-[0.97]"
+                                  >
+                                    <span className="block text-[13px] leading-tight font-medium">{BLOCK_META[id].label}</span>
+                                    <span className="mt-1 flex items-baseline justify-between gap-2 text-[11px] text-mute">
+                                      <span className="truncate">{BLOCK_META[id].hint}</span>
+                                      <span className="shrink-0 tabular-nums">+{pts(BLOCK_META[id].price)}</span>
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className={ctlTitle}>Tu página, de arriba abajo. Arrastra para mover, toca para ajustar.</span>
+                    <ul className="flex flex-col gap-1.5">
+                      {state.blocks
+                        .filter((x) => !x.closing)
+                        .map((bl) => (
+                          <li
+                            key={bl.uid}
+                            data-id={bl.uid}
+                            onPointerDown={(e) => onDragStart(e, bl.uid)}
+                            onPointerMove={onDragMove}
+                            onPointerUp={onDragEnd}
+                            onPointerCancel={onDragEnd}
+                            className={`sort-row group flex cursor-grab touch-none items-center gap-2 border py-1.5 pr-1.5 pl-2.5 text-[14px] select-none active:cursor-grabbing ${
+                              dragging === bl.uid ? 'z-[1] border-bone bg-bone text-coal shadow-[0_14px_30px_rgb(0_0_0/0.5)]' : 'border-line bg-coal-2'
+                            } ${bl.hidden ? 'opacity-45' : ''}`}
+                          >
+                            <DotsSixVertical size={17} weight="bold" className="shrink-0 opacity-50" />
+                            <button type="button" onClick={() => pickBlock(bl.uid)} className="min-w-0 flex-1 truncate py-1 text-left">
+                              {labelOf(bl)}
+                              {bl.type === 'tpl' && <span className="ml-2 text-[10px] tracking-[0.14em] uppercase opacity-50">plantilla</span>}
+                            </button>
+                            <button type="button" title={bl.hidden ? 'Mostrar' : 'Ocultar'} aria-label={bl.hidden ? 'Mostrar' : 'Ocultar'} onClick={() => toggleHidden(bl.uid)} className="grid h-8 w-8 shrink-0 place-items-center opacity-50 transition-opacity hover:opacity-100">
+                              {bl.hidden ? <EyeSlash size={15} /> : <Eye size={15} />}
+                            </button>
+                            <button type="button" title="Eliminar" aria-label="Eliminar" onClick={() => removeBlock(bl.uid)} className="grid h-8 w-8 shrink-0 place-items-center opacity-50 transition-opacity hover:opacity-100">
+                              <Trash size={15} />
+                            </button>
+                          </li>
+                        ))}
+                    </ul>
+                    {state.blocks.length === 0 && <p className="border border-dashed border-line p-4 text-[13px] text-mute">La página está vacía. Añade un bloque para empezar.</p>}
+                  </div>
+
+                  <div>
+                    <span className={ctlTitle}>Complementos flotantes</span>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {EXTRAS.map((m) => {
+                        const on = state.modules.includes(m.id)
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            role="switch"
+                            aria-checked={on}
+                            onClick={() => toggleExtra(m.id)}
+                            className={`flex items-start gap-2.5 border p-2.5 text-left transition-[color,background-color,border-color,transform] active:scale-[0.97] ${on ? 'border-bone bg-bone text-coal' : 'border-line hover:border-bone/50'}`}
+                          >
+                            <span className={`mt-0.5 grid h-4 w-4 shrink-0 place-items-center border ${on ? 'border-coal bg-coal text-bone' : 'border-bone/40'}`}>{on && <Check size={11} weight="bold" className="[animation:pop_0.45s_var(--ease-out-expo)]" />}</span>
+                            <span className="min-w-0">
+                              <span className="block text-[13px] leading-tight font-medium">{m.label}</span>
+                              <span className={`mt-1 block text-[12px] tabular-nums ${on ? 'opacity-70' : 'text-mute'}`}>+{pts(m.price)}</span>
+                            </span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </>
+              ))}
           </div>
         </div>
 
@@ -919,7 +1233,7 @@ export function Studio({ state, setState }: Props) {
                   <span className="tabular-nums">{pts(q.base)}</span>
                 </li>
                 {q.mods.map((m) => (
-                  <li key={m.id} className="flex justify-between gap-4">
+                  <li key={m.key} className="flex justify-between gap-4">
                     <span>{m.label}</span>
                     <span className="tabular-nums">{pts(m.price)}</span>
                   </li>
