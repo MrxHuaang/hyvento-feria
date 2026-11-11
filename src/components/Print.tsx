@@ -21,7 +21,7 @@ function Qr({ className = '', level = 'M' }: { className?: string; level?: 'M' |
 }
 
 /** Ornamental rule: line, star, line. */
-function Rule({ className = '' }: { className?: string }) {
+export function Rule({ className = '' }: { className?: string }) {
   const star = 'M0-9c1 6 3 8 9 9-6 1-8 3-9 9-1-6-3-8-9-9 6-1 8-3 9-9z'
   return (
     <svg viewBox="-200 -12 400 24" className={className} aria-hidden="true">

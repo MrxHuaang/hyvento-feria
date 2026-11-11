@@ -2,7 +2,7 @@
 // The quote is shown in symbolic "eurodólares" (value / 10.000), not pesos. Item prices inside the
 // sample sites are demo content for each business.
 
-export const WHATSAPP_NUMBER = '573000000000' // TODO: real Hyvento WhatsApp, digits only with country code
+export const WHATSAPP_NUMBER = '573213873880'
 
 const img = (id: string, w = 900) => `https://images.unsplash.com/photo-${id}?w=${w}&q=70&auto=format&fit=crop`
 
