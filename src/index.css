@@ -396,3 +396,43 @@ textarea.field {
     animation: none;
   }
 }
+
+/* Print sheets (?imprimir): Letter pages, exact colours, no browser margins */
+@page {
+  size: letter;
+  margin: 0;
+}
+.print-root {
+  background: #d9d4c8;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+  padding: 24px 0;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+.sheet {
+  width: 8.5in;
+  height: 11in;
+  flex: none;
+  break-after: page;
+  box-shadow: 0 10px 40px rgb(0 0 0 / 0.25);
+}
+@media print {
+  html,
+  body {
+    background: #fff;
+  }
+  .print-root {
+    display: block;
+    padding: 0;
+    background: #fff;
+  }
+  .sheet {
+    box-shadow: none;
+  }
+  .grain {
+    display: none;
+  }
+}

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { useGSAP } from '@gsap/react'
-import { ArrowDown } from '@phosphor-icons/react'
+import { ArrowDown, ArrowUpRight } from '@phosphor-icons/react'
 import { ArchFrame, Drape, Ground, Seal, Sunburst, Woodcut, ink, inkStill, type ObjectName } from './Art'
 import { Armillary } from './Armillary'
 import { goTo, leaveEditor, reducedMotion } from '../lib/scroll'
@@ -14,9 +14,15 @@ export function Nav() {
         <Seal className="h-12 w-12 text-bone transition-transform duration-700 ease-[var(--ease-out-expo)] group-hover:rotate-[60deg]" />
         <span className="deco hidden text-[1.55rem] text-bone sm:block [-webkit-text-stroke:5px_var(--color-coal)] [paint-order:stroke_fill]">Hyvento</span>
       </a>
-      <a href="#estudio" onClick={(e) => (e.preventDefault(), goTo('#estudio'))} className="btn pointer-events-auto !bg-coal !px-4 !py-2.5">
-        Arma tu página
-      </a>
+      <nav className="pointer-events-auto flex items-center gap-2">
+        <a href="https://hyvento.co" target="_blank" rel="noreferrer" className="btn !border-transparent !bg-coal !px-3 !py-2.5 max-sm:!hidden">
+          hyvento.co
+          <ArrowUpRight size={14} weight="bold" />
+        </a>
+        <a href="#estudio" onClick={(e) => (e.preventDefault(), goTo('#estudio'))} className="btn !bg-coal !px-4 !py-2.5">
+          Arma tu página
+        </a>
+      </nav>
     </header>
   )
 }
@@ -202,7 +208,7 @@ export function Hero({ ready }: { ready: boolean }) {
         <span className="h-top line-mask absolute inset-x-0 top-[11dvh]">
           <span>{letters('Míralo antes')}</span>
         </span>
-        <span className="h-bot line-mask absolute inset-x-0 bottom-[12dvh]">
+        <span className="h-bot line-mask absolute inset-x-0 bottom-[31dvh] sm:bottom-[12dvh]">
           <span>{letters('de pagarlo')}</span>
         </span>
       </h1>
@@ -217,7 +223,7 @@ export function Hero({ ready }: { ready: boolean }) {
       </p>
 
       {/* Corners */}
-      <div className="hero-ui absolute inset-x-5 bottom-6 flex items-end justify-between gap-6 lg:inset-x-10 lg:bottom-8">
+      <div className="hero-ui absolute inset-x-5 bottom-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6 lg:inset-x-10 lg:bottom-8">
         <p className="hero-fade max-w-[30ch] text-[15px] leading-snug text-bone lg:text-[17px]">
           La página de tu{' '}
           <span key={kind} className="deco inline-block text-[1.25em] [animation:rise_0.6s_var(--ease-out-expo)]">
@@ -226,10 +232,17 @@ export function Hero({ ready }: { ready: boolean }) {
           <br />
           armada en vivo, con tu logo y tus colores.
         </p>
-        <a href="#estudio" onClick={(e) => (e.preventDefault(), goTo('#estudio'))} className="btn btn-solid hero-fade shrink-0">
-          Armar mi página
-          <ArrowDown size={16} weight="bold" />
-        </a>
+        {/* Two ways in: try the prototype here, or go straight to the real studio */}
+        <div className="hero-fade flex shrink-0 flex-col gap-2 sm:items-end">
+          <a href="#estudio" onClick={(e) => (e.preventDefault(), goTo('#estudio'))} className="btn btn-solid justify-between">
+            Probar el prototipo
+            <ArrowDown size={16} weight="bold" />
+          </a>
+          <a href="https://hyvento.co" target="_blank" rel="noreferrer" className="btn justify-between !bg-coal">
+            Hablar con Hyvento
+            <ArrowUpRight size={16} weight="bold" />
+          </a>
+        </div>
       </div>
     </section>
   )

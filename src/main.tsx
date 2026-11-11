@@ -14,9 +14,9 @@ import '@fontsource/cormorant-garamond/400-italic.css'
 import '@fontsource-variable/big-shoulders/wght.css'
 import './index.css'
 import App from './App.tsx'
+import { Print } from './components/Print.tsx'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+// `?imprimir` shows the print sheets for the stand instead of the site
+const printing = new URLSearchParams(location.search).has('imprimir')
+
+createRoot(document.getElementById('root')!).render(<StrictMode>{printing ? <Print /> : <App />}</StrictMode>)
