@@ -114,6 +114,13 @@ summary {
 }
 
 /* Film grain, fixed so it never repaints while scrolling */
+@media (hover: none) and (pointer: coarse) {
+  /* a full-screen blend layer is expensive to composite on phones */
+  .grain {
+    display: none;
+  }
+}
+
 .grain {
   position: fixed;
   inset: 0;

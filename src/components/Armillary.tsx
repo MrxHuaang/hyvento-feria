@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import * as THREE from 'three'
-import { reducedMotion } from '../lib/scroll'
+import { reducedMotion, touchDevice } from '../lib/scroll'
 
 const CREAM = 0xf3ead8
 
@@ -27,8 +27,13 @@ export function Armillary({ className = '' }: { className?: string }) {
   useEffect(() => {
     const el = mount.current!
     const still = reducedMotion()
-    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2))
+    let renderer: THREE.WebGLRenderer
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: !touchDevice, alpha: true, powerPreference: touchDevice ? 'low-power' : 'default' })
+    } catch {
+      return // no WebGL: the engraved ring around it still reads fine
+    }
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, touchDevice ? 1.5 : 2))
     el.appendChild(renderer.domElement)
 
     const scene = new THREE.Scene()

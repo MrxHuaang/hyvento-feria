@@ -223,7 +223,7 @@ export function Hero({ ready }: { ready: boolean }) {
       </p>
 
       {/* Corners */}
-      <div className="hero-ui absolute inset-x-5 bottom-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between sm:gap-6 lg:inset-x-10 lg:bottom-8">
+      <div className="hero-ui absolute inset-x-0 bottom-0 flex flex-col gap-4 bg-linear-to-t from-coal via-coal/90 to-transparent px-5 pt-16 pb-5 sm:inset-x-5 sm:bottom-5 sm:flex-row sm:items-end sm:justify-between sm:gap-6 sm:bg-none sm:p-0 lg:inset-x-10 lg:bottom-8">
         <p className="hero-fade max-w-[30ch] text-[15px] leading-snug text-bone lg:text-[17px]">
           La página de tu{' '}
           <span key={kind} className="deco inline-block text-[1.25em] [animation:rise_0.6s_var(--ease-out-expo)]">

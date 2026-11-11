@@ -8,17 +8,32 @@ if ('scrollRestoration' in history) history.scrollRestoration = 'manual'
 
 export const reducedMotion = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
+/** Phones and tablets: native touch scrolling, lighter effects. */
+export const touchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches
+
+// iOS shows and hides its address bar while scrolling; refreshing every time makes pinned sections jump
+ScrollTrigger.config({ ignoreMobileResize: true })
+
 // Smooth scroll is created once at import time so every component can rely on it.
-export const lenis: Lenis | null = reducedMotion() ? null : new Lenis({ lerp: 0.09, autoRaf: false })
+// Touch screens keep native scrolling: on iOS a smoothing layer fights the finger.
+export const lenis: Lenis | null = reducedMotion() || touchDevice ? null : new Lenis({ lerp: 0.09, autoRaf: false })
 
 if (lenis) {
   lenis.on('scroll', ScrollTrigger.update)
-  gsap.ticker.add((t) => lenis.raf(t * 1000))
+  // A throw inside a ticker listener would freeze every animation on the page, so keep it contained
+  gsap.ticker.add((t) => {
+    try {
+      lenis.raf(t * 1000)
+    } catch (err) {
+      console.error(err)
+    }
+  })
   gsap.ticker.lagSmoothing(0)
   document.documentElement.classList.add('has-lenis')
 }
 
 export const lockScroll = (lock: boolean) => {
+  document.body.style.overflow = lock ? 'hidden' : ''
   if (lenis) {
     if (lock) lenis.stop()
     else lenis.start()

@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import { Drape, Seal, Sunburst } from './Art'
@@ -11,12 +11,48 @@ import { lockScroll, reducedMotion } from '../lib/scroll'
 export function Loader({ onDone }: { onDone: () => void }) {
   const root = useRef<HTMLDivElement>(null)
   const count = useRef<HTMLSpanElement>(null)
+  const finished = useRef(false)
+
+  /** Ends the opening once, whichever path gets here first. */
+  const finish = () => {
+    if (finished.current) return
+    finished.current = true
+    lockScroll(false)
+    onDone()
+  }
+
+  /** Fade the curtain out with plain CSS, so it works even when GSAP is not ticking. */
+  const hide = () => {
+    const el = root.current
+    if (!el) return
+    el.style.transition = 'opacity 0.45s ease'
+    el.style.opacity = '0'
+    el.style.pointerEvents = 'none'
+    window.setTimeout(() => (el.style.display = 'none'), 480)
+  }
+
+  const skip = () => {
+    finish()
+    hide()
+  }
+
+  // Failsafe on a plain timer, outside GSAP: if a slow phone stalls the animation,
+  // the page still opens and scrolls instead of staying behind the curtain.
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      finish()
+      // still on screen after the animation should have ended: take it down
+      if (root.current && getComputedStyle(root.current).display !== 'none') hide()
+    }, 5000)
+    return () => window.clearTimeout(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useGSAP(
     () => {
       if (reducedMotion()) {
         gsap.set(root.current, { display: 'none' })
-        onDone()
+        finish()
         return
       }
       lockScroll(true)
@@ -44,10 +80,7 @@ export function Loader({ onDone }: { onDone: () => void }) {
         )
         .to('.ld-seal', { rotate: 120, duration: 1.9, ease: 'power2.inOut' }, 0.4)
         .to('.ld-center', { scale: 0.6, autoAlpha: 0, duration: 0.55, ease: 'power3.in' }, 2.15)
-        .add(() => {
-          lockScroll(false)
-          onDone()
-        }, 2.5)
+        .add(finish, 2.5)
         .to('.ld-l', { xPercent: -104, duration: 1.5, ease: 'expo.inOut' }, 2.45)
         .to('.ld-r', { xPercent: 104, duration: 1.5, ease: 'expo.inOut' }, 2.45)
         .set(root.current, { display: 'none' })
@@ -56,7 +89,7 @@ export function Loader({ onDone }: { onDone: () => void }) {
   )
 
   return (
-    <div ref={root} className="fixed inset-0 z-[80] overflow-hidden text-bone">
+    <div ref={root} className="fixed inset-0 z-[80] overflow-hidden text-bone" onClick={skip}>
       {(['l', 'r'] as const).map((side) => (
         <div key={side} className={`ld-${side} absolute inset-y-0 w-[51%] overflow-hidden bg-coal ${side === 'l' ? 'left-0' : 'right-0'}`}>
           <Drape className="ld-sway absolute inset-0 h-full w-full origin-top opacity-45" seed={side === 'l' ? 14 : 27} />

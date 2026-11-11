@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { reducedMotion } from '../lib/scroll'
+import { reducedMotion, touchDevice } from '../lib/scroll'
 
 /* Woodcut drawing kit. Everything here is generated geometry pushed through one
    SVG "ink" filter that roughens the edges and re-seeds a few times a second,
@@ -33,7 +33,8 @@ function wobble(x1: number, y1: number, x2: number, y2: number, r: () => number,
 export function InkDefs() {
   const turb = useRef<SVGFETurbulenceElement>(null)
   useEffect(() => {
-    if (reducedMotion()) return
+    // Re-seeding an SVG filter repaints it; phones get the still version
+    if (reducedMotion() || touchDevice) return
     let seed = 1
     const id = window.setInterval(() => {
       seed = (seed % 4) + 1
