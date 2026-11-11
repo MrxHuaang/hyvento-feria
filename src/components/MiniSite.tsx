@@ -2,29 +2,21 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import gsap from 'gsap'
 import { useGSAP } from '@gsap/react'
 import {
-  Anchor,
   Clock,
-  Crown,
-  Diamond,
-  Flame,
-  Leaf,
   LockSimple,
   MapPin,
   Moped,
-  PawPrint,
   Sparkle,
   Star,
-  Sun,
   Tag,
   WhatsappLogo,
-  type Icon,
 } from '@phosphor-icons/react'
 import { FILTERS, FONTS, FONT_WIDTH, RADII, getBusiness, onColor, readable, type ModuleId, type SectionId, type StudioState } from '../lib/config'
 import { reducedMotion } from '../lib/scroll'
 import { buildTemplate } from './Templates'
+import { LOGOS } from './Logos'
 
 /** Example marks a visitor can try before they bring their own logo. */
-export const LOGOS: Icon[] = [Flame, Leaf, Crown, Sun, Diamond, Anchor, PawPrint, Star]
 
 /** One section of the visitor's page. Folds open/closed and has a wireframe ghost for the build animation. */
 function Block({ id, label, open = true, className = '', children }: { id: string; label: string; open?: boolean; className?: string; children: ReactNode }) {

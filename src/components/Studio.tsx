@@ -28,7 +28,8 @@ import {
   X,
   type Icon,
 } from '@phosphor-icons/react'
-import { LOGOS, MiniSite, type Focus } from './MiniSite'
+import { MiniSite, type Focus } from './MiniSite'
+import { LOGOS } from './Logos'
 import { HexMark, Scratches } from './Art'
 import {
   BUSINESSES,
@@ -90,6 +91,7 @@ const slug = (s: string) =>
 const pick = <T,>(list: readonly T[]) => list[Math.floor(Math.random() * list.length)]
 
 type Tab = 'marca' | 'estilo' | 'secciones'
+type Kind = 'point' | 'carry' | 'type' | 'text' | 'color' | 'logo' | 'photo' | 'size' | 'radius' | 'mode' | 'align'
 type Device = 'ambos' | 'pc' | 'cel'
 const TABS: [Tab, string][] = [
   ['marca', 'Tu marca'],
@@ -124,9 +126,11 @@ export function Studio({ state, setState }: Props) {
   const name = state.name.trim() || b.defaultName
   const activeSections = state.order.filter((id) => state.modules.includes(id))
 
-  /* Builder cursor: a pointer comes in from the controls, carrying the piece to where it goes,
-     so every change is seen being placed rather than just appearing. */
-  const fly = (id: string, label: string, carry: boolean) => {
+  /* Builder cursor. A pointer comes in from the controls and does the edit where it happens:
+     it types the headline when the type changes, dabs each button when the colour changes,
+     spins the logo, opens the photograph from its centre, drags the text when it is realigned,
+     and carries a new section to its place. */
+  const act = (kind: Kind, id: string, label: string) => {
     const layer = root.current?.querySelector<HTMLElement>('.builder')
     if (!layer || reducedMotion() || window.innerWidth < 1024) return
     window.setTimeout(() => {
@@ -135,45 +139,160 @@ export function Studio({ state, setState }: Props) {
       if (!site || !block) return
       const L = layer.getBoundingClientRect()
       const S = site.getBoundingClientRect()
-      const B = block.getBoundingClientRect()
-      const top = Math.max(B.top, S.top)
-      const bottom = Math.min(B.bottom, S.bottom)
-      if (bottom - top < 12) return
-      const box = { x: S.left - L.left, y: top - L.top, w: S.width, h: bottom - top }
-      const cur = layer.querySelector('.bld-cur')
-      const piece = layer.querySelector('.bld-piece')
-      const ring = layer.querySelector('.bld-ring')
-      const tag = layer.querySelector('.bld-tag')
-      if (tag) tag.textContent = label
+      /** element box in layer coordinates, clipped to what the frame shows */
+      const box = (el: Element) => {
+        const r = el.getBoundingClientRect()
+        const x1 = Math.max(r.left, S.left)
+        const y1 = Math.max(r.top, S.top)
+        const x2 = Math.min(r.right, S.right)
+        const y2 = Math.min(r.bottom, S.bottom)
+        return { x: x1 - L.left, y: y1 - L.top, w: Math.max(0, x2 - x1), h: Math.max(0, y2 - y1), seen: x2 - x1 > 8 && y2 - y1 > 8 }
+      }
+      const seen = (sel: string, scope: Element = site) => Array.from(scope.querySelectorAll<HTMLElement>(sel)).filter((el) => box(el).seen)
+      const biggest = (els: HTMLElement[]) => els.sort((a, b) => parseFloat(getComputedStyle(b).fontSize) - parseFloat(getComputedStyle(a).fontSize))[0]
+
+      const cur = layer.querySelector<HTMLElement>('.bld-cur')!
+      const piece = layer.querySelector<HTMLElement>('.bld-piece')!
+      const ring = layer.querySelector<HTMLElement>('.bld-ring')!
+      const caret = layer.querySelector<HTMLElement>('.bld-caret')!
+      const tag = layer.querySelector<HTMLElement>('.bld-tag')!
+      tag.textContent = label
+      gsap.killTweensOf([cur, piece, ring, caret])
+      gsap.set([piece, ring, caret], { autoAlpha: 0 })
+
       const start = { x: -40, y: L.height * 0.55 }
-      const end = { x: box.x + box.w * 0.5, y: box.y + Math.min(box.h * 0.5, 120) }
-      gsap.killTweensOf([cur, piece, ring])
       const tl = gsap.timeline()
       tl.set(cur, { x: start.x, y: start.y, autoAlpha: 1, scale: 1 })
-      if (carry) {
+      const go = (x: number, y: number, at: number | string, d = 0.6) => tl.to(cur, { x, y, duration: d, ease: 'expo.inOut' }, at)
+      const click = (x: number, y: number, at: number) =>
+        tl
+          .to(cur, { scale: 0.82, duration: 0.09, yoyo: true, repeat: 1 }, at)
+          .fromTo(ring, { x, y, scale: 0.2, autoAlpha: 0.9 }, { scale: 2.4, autoAlpha: 0, duration: 0.55, ease: 'power2.out' }, at)
+      const leave = (at: number | string) => tl.to(cur, { x: '+=70', y: '+=90', autoAlpha: 0, duration: 0.55, ease: 'power2.in' }, at)
+
+      const B = box(block)
+      const headline = biggest(seen('.site-head', block))
+      const brandEls = seen('[class*="bg-(--s-brand)"]').slice(0, 3)
+
+      if (kind === 'carry' && B.seen) {
+        // a section is brought over and stretched into place
         tl.set(piece, { x: start.x + 14, y: start.y + 18, width: 170, height: 40, autoAlpha: 1 })
-          .to(cur, { x: box.x + box.w - 6, y: box.y + box.h - 6, duration: 0.9, ease: 'expo.inOut' }, 0)
-          .to(piece, { x: box.x, y: box.y, width: box.w, height: box.h, duration: 0.9, ease: 'expo.inOut' }, 0)
-          .to(piece, { autoAlpha: 0, duration: 0.45 }, 1.05)
-      } else {
-        tl.to(cur, { x: end.x, y: end.y, duration: 0.7, ease: 'expo.inOut' }, 0)
+        go(B.x + B.w - 6, B.y + B.h - 6, 0, 0.9)
+        tl.to(piece, { x: B.x, y: B.y, width: B.w, height: B.h, duration: 0.9, ease: 'expo.inOut' }, 0).to(piece, { autoAlpha: 0, duration: 0.45 }, 1.05)
+        click(B.x + B.w - 6, B.y + B.h - 6, 0.95)
+        leave(1.5)
+      } else if ((kind === 'text' || kind === 'size' || kind === 'align') && headline) {
+        const h = box(headline)
+        if (kind === 'text') {
+          // the headline is written again, left to right, with a caret riding the edge
+          go(h.x, h.y + h.h * 0.5, 0, 0.55)
+          tl.set(caret, { x: h.x, y: h.y, height: h.h, autoAlpha: 1 }, 0.55)
+            .fromTo(headline, { clipPath: 'inset(0 100% 0 0)' }, { clipPath: 'inset(0 0% 0 0)', duration: 1, ease: 'steps(16)', clearProps: 'clipPath' }, 0.55)
+            .to(caret, { x: h.x + h.w, duration: 1, ease: 'steps(16)' }, 0.55)
+            .to(cur, { x: h.x + h.w + 6, duration: 1, ease: 'steps(16)' }, 0.55)
+            .to(caret, { autoAlpha: 0, duration: 0.12, repeat: 3, yoyo: true }, 1.55)
+          leave(1.95)
+        } else if (kind === 'size') {
+          // grabbed by its corner and resized
+          go(h.x + h.w, h.y + h.h, 0, 0.55)
+          click(h.x + h.w, h.y + h.h, 0.55)
+          tl.fromTo(headline, { scale: 0.9, transformOrigin: 'left top' }, { scale: 1, duration: 0.6, ease: 'back.out(2)', clearProps: 'transform' }, 0.6).to(cur, { x: '+=18', y: '+=14', duration: 0.6, ease: 'back.out(2)' }, 0.6)
+          leave(1.3)
+        } else {
+          // dragged sideways into its new alignment
+          const dx = state.align === 'centro' ? 60 : -60
+          go(h.x + h.w * 0.5 + dx, h.y + h.h * 0.5, 0, 0.55)
+          click(h.x + h.w * 0.5 + dx, h.y + h.h * 0.5, 0.55)
+          tl.fromTo(headline, { x: dx }, { x: 0, duration: 0.7, ease: 'expo.out', clearProps: 'transform' }, 0.62).to(cur, { x: h.x + h.w * 0.5, duration: 0.7, ease: 'expo.out' }, 0.62)
+          leave(1.4)
+        }
+      } else if ((kind === 'color' || kind === 'radius') && brandEls.length) {
+        // each piece that wears the brand colour gets a dab, one after another
+        brandEls.forEach((el, i) => {
+          const r = box(el)
+          const at = i * 0.5
+          const cx = r.x + r.w * 0.5
+          const cy = r.y + r.h * 0.5
+          go(cx, cy, at, 0.45)
+          click(cx, cy, at + 0.42)
+          tl.fromTo(el, { scale: kind === 'color' ? 1.18 : 0.86 }, { scale: 1, duration: 0.6, ease: 'elastic.out(1, 0.5)', clearProps: 'transform' }, at + 0.44)
+        })
+        leave(brandEls.length * 0.5 + 0.5)
+      } else if (kind === 'logo') {
+        const el = seen('.t-logo')[0]
+        if (!el) return
+        const r = box(el)
+        go(r.x + r.w * 0.5, r.y + r.h * 0.5, 0, 0.6)
+        click(r.x + r.w * 0.5, r.y + r.h * 0.5, 0.6)
+        tl.fromTo(el, { rotate: -200, scale: 0.2 }, { rotate: 0, scale: 1, duration: 0.9, ease: 'back.out(1.8)', clearProps: 'transform' }, 0.62)
+        leave(1.45)
+      } else if (kind === 'photo') {
+        const el = seen('img.kb', block)[0] ?? seen('img', block)[0]
+        if (!el) return
+        const r = box(el)
+        const cx = r.x + r.w * 0.5
+        const cy = r.y + r.h * 0.5
+        go(cx, cy, 0, 0.6)
+        click(cx, cy, 0.6)
+        // the new photograph opens out from where the pointer pressed
+        tl.fromTo(el, { clipPath: 'circle(0% at 50% 50%)' }, { clipPath: 'circle(75% at 50% 50%)', duration: 1, ease: 'expo.out', clearProps: 'clipPath' }, 0.62)
+        leave(1.45)
+      } else if (kind === 'mode') {
+        // one sweep across the whole frame
+        const s0 = box(site)
+        go(s0.x + 30, s0.y + 30, 0, 0.45)
+        go(s0.x + s0.w - 40, s0.y + s0.h - 40, 0.45, 0.9)
+        leave(1.35)
+      } else if (kind === 'type') {
+        // while typing, the pointer simply sits at the end of the line being written
+        const el = id === 'header' ? seen('.site-head', block)[0] : headline
+        if (!el) return
+        const r = box(el)
+        tl.set(cur, { x: r.x + r.w + 6, y: r.y + r.h * 0.5 }).set(caret, { x: r.x + r.w + 2, y: r.y, height: r.h, autoAlpha: 1 })
+        tl.to(caret, { autoAlpha: 0, duration: 0.3, repeat: 3, yoyo: true }, 0.1)
+        leave(1.3)
+      } else if (B.seen) {
+        const cx = B.x + B.w * 0.5
+        const cy = B.y + Math.min(B.h * 0.5, 120)
+        go(cx, cy, 0, 0.7)
+        click(cx, cy, 0.72)
+        leave(1.27)
       }
-      const hit = carry ? 0.95 : 0.72
-      tl.to(cur, { scale: 0.82, duration: 0.09, yoyo: true, repeat: 1 }, hit)
-        .fromTo(ring, { x: carry ? box.x + box.w - 6 : end.x, y: carry ? box.y + box.h - 6 : end.y, scale: 0.2, autoAlpha: 0.9 }, { scale: 2.6, autoAlpha: 0, duration: 0.6, ease: 'power2.out' }, hit)
-        .to(cur, { x: '+=70', y: '+=90', autoAlpha: 0, duration: 0.6, ease: 'power2.in' }, hit + 0.55)
     }, 320)
   }
 
-  const select = (id: string, label: string, carry = false) => {
+  const select = (id: string, label: string, kind: Kind = 'point') => {
     setFocus((f) => ({ id, label, n: f.n + 1 }))
-    fly(id, label, carry)
+    act(kind, id, label)
   }
+
+  /** What kind of gesture an edit deserves, from the fields it touches. */
+  const kindOf = (p: Partial<StudioState>): Kind =>
+    'name' in p || 'tagline' in p
+      ? 'type'
+      : 'font' in p
+        ? 'text'
+        : 'brand' in p
+          ? 'color'
+          : 'logo' in p || 'logoPreset' in p
+            ? 'logo'
+            : 'photo' in p || 'filter' in p
+              ? 'photo'
+              : 'scale' in p
+                ? 'size'
+                : 'radius' in p
+                  ? 'radius'
+                  : 'mode' in p
+                    ? 'mode'
+                    : 'align' in p
+                      ? 'align'
+                      : 'point'
+
   const patch = (p: Partial<StudioState>, message: string, target: 'header' | 'hero' | null = 'hero') => {
     setState((s) => ({ ...s, ...p }))
     setLog(message)
-    if (target === 'header') select('header', 'Encabezado')
-    else if (target === 'hero') select('hero', 'Portada')
+    if (target === 'header') select('header', 'Encabezado', kindOf(p))
+    else if (target === 'hero') select('hero', 'Portada', kindOf(p))
   }
   const rebuild = () => setBuildKey((k) => k + 1)
   const captureFlip = () => {
@@ -188,7 +307,7 @@ export function Studio({ state, setState }: Props) {
 
   const toggleModule = (id: ModuleId) => {
     setLog(state.modules.includes(id) ? `${moduleLabel(id)} retirado` : `${moduleLabel(id)} instalado`)
-    if (!state.modules.includes(id) && id !== 'whatsapp' && id !== 'ia' && id !== 'idiomas') window.setTimeout(() => select(id, moduleLabel(id), true), 420)
+    if (!state.modules.includes(id) && id !== 'whatsapp' && id !== 'ia' && id !== 'idiomas') window.setTimeout(() => select(id, moduleLabel(id), 'carry'), 420)
     setState((s) => ({ ...s, modules: s.modules.includes(id) ? s.modules.filter((m) => m !== id) : [...s.modules, id] }))
   }
 
@@ -380,6 +499,7 @@ export function Studio({ state, setState }: Props) {
               <div className="bld-piece invisible absolute top-0 left-0 grid place-items-center border-2 border-dashed border-[#2f7bff] bg-[#2f7bff]/12 opacity-0">
                 <span className="bld-tag bg-[#2f7bff] px-2 py-1 text-[11px] font-semibold text-white" />
               </div>
+              <div className="bld-caret invisible absolute top-0 left-0 w-[2px] bg-[#2f7bff] opacity-0" />
               <div className="bld-ring invisible absolute top-0 left-0 -mt-4 -ml-4 h-8 w-8 rounded-full border-2 border-[#2f7bff] opacity-0" />
               <div className="bld-cur invisible absolute top-0 left-0 opacity-0">
                 <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
@@ -491,9 +611,9 @@ export function Studio({ state, setState }: Props) {
                         aria-label={`Logo de ejemplo ${i + 1}`}
                         aria-pressed={!state.logo && state.logoPreset === i}
                         onClick={() => patch({ logoPreset: i, logo: null }, 'Logo de ejemplo colocado', 'header')}
-                        className="grid h-10 w-10 place-items-center border border-line text-mute transition-colors hover:text-bone aria-pressed:border-bone aria-pressed:bg-bone aria-pressed:text-coal"
+                        className="grid h-12 w-12 place-items-center border border-line text-mute transition-[color,background-color,border-color,transform] hover:-translate-y-0.5 hover:text-bone aria-pressed:border-bone aria-pressed:bg-bone aria-pressed:text-coal"
                       >
-                        <L size={20} weight="fill" />
+                        <L size={30} letter={name.charAt(0)} />
                       </button>
                     ))}
                     {state.logo ? (

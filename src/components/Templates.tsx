@@ -16,6 +16,7 @@ import {
   type Icon,
 } from '@phosphor-icons/react'
 import { cop, type Business, type BusinessId, type StudioState } from '../lib/config'
+import type { LogoMark } from './Logos'
 
 /**
  * One full page skeleton per business, each composed after a different reference:
@@ -30,7 +31,7 @@ export interface TemplateCtx {
   name: string
   tagline: string
   centered: boolean
-  Logo: Icon
+  Logo: LogoMark
   /** average glyph width of the chosen display font, in em */
   charW: number
 }
@@ -101,10 +102,10 @@ function Stamp({ text, className = '' }: { text: string; className?: string }) {
 function Mark({ ctx, className = '' }: { ctx: TemplateCtx; className?: string }) {
   const { state, Logo } = ctx
   return state.logo ? (
-    <img src={state.logo} alt="" className={`h-8 w-8 shrink-0 rounded-(--s-r) object-contain ${className}`} />
+    <img src={state.logo} alt="" className={`t-logo h-8 w-8 shrink-0 rounded-(--s-r) object-contain ${className}`} />
   ) : (
-    <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-(--s-r) bg-(--s-brand) text-(--s-on-brand) ${className}`}>
-      <Logo size={18} weight="fill" />
+    <span className={`t-logo grid h-8 w-8 shrink-0 place-items-center rounded-(--s-r) bg-(--s-brand) text-(--s-on-brand) ${className}`}>
+      <Logo size={24} letter={ctx.name.trim().charAt(0) || 'H'} />
     </span>
   )
 }
